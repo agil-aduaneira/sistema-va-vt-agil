@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>V.A. + V.T. — Agil Aduaneira</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -86,6 +87,12 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
 .month-nav span{font-weight:600;color:var(--navy);min-width:150px;text-align:center}
 .empty-msg{padding:24px;text-align:center;color:var(--g400)}
 .saving-tag{font-size:11px;color:var(--g400);margin-left:6px}
+
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px}
+.stat-card{background:#fff;border:1px solid var(--g200);border-radius:12px;padding:18px 20px}
+.stat-card .stat-label{font-size:12px;font-weight:600;color:var(--g500);text-transform:uppercase;letter-spacing:.02em}
+.stat-card .stat-value{font-size:24px;font-weight:700;color:var(--navy);margin-top:6px}
+.chart-wrap{background:#fff;border:1px solid var(--g200);border-radius:12px;padding:20px;height:340px}
 </style>
 </head>
 <body>
@@ -103,14 +110,46 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
   </header>
 
   <div class="tab-bar">
-    <button class="tab-btn active" data-tab="lancamento">Lançamento Mensal</button>
+    <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+    <button class="tab-btn" data-tab="lancamento">Lançamento Mensal</button>
     <button class="tab-btn" data-tab="colaboradores">Colaboradores</button>
     <button class="tab-btn" data-tab="parametros">Parâmetros</button>
     <button class="tab-btn" data-tab="historico">Histórico</button>
   </div>
 
+  <!-- ═══ DASHBOARD ═══ -->
+  <div class="tab-pane active" id="tab-dashboard">
+    <h1>Dashboard</h1>
+    <div class="subtitle">Visão geral do mês selecionado e evolução dos últimos meses.</div>
+
+    <div class="month-nav">
+      <button class="btn btn-ghost" id="btn-dash-mes-anterior">&larr; anterior</button>
+      <span id="dash-mes-atual-label"></span>
+      <button class="btn btn-ghost" id="btn-dash-mes-proximo">próximo &rarr;</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">Colaboradores ativos</div>
+        <div class="stat-value" id="stat-colaboradores-ativos">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">FLASH no mês</div>
+        <div class="stat-value" id="stat-flash-mes">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Plano de saúde no mês</div>
+        <div class="stat-value" id="stat-plano-mes">—</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="chart-evolucao"></canvas>
+    </div>
+  </div>
+
   <!-- ═══ LANÇAMENTO MENSAL ═══ -->
-  <div class="tab-pane active" id="tab-lancamento">
+  <div class="tab-pane" id="tab-lancamento">
     <h1>Lançamento mensal</h1>
     <div class="subtitle">V.A. e V.T. recalculados automaticamente conforme os dias informados.</div>
 
@@ -127,7 +166,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <select id="select-add-colaborador"><option value="">Selecione...</option></select>
       </div>
       <button class="btn btn-primary" id="btn-add-colaborador">Adicionar</button>
-      <button class="btn btn-ghost" id="btn-add-todos">Adicionar todos os colaboradores ativos</button>
+      <button class="btn btn-dark" id="btn-add-todos">Adicionar todos os colaboradores ativos</button>
     </div>
 
     <div class="card" style="padding:0;overflow-x:auto">
@@ -302,14 +341,27 @@ function iniciarApp() {
   escutarConfig();
   escutarLancamentosDoMes();
   carregarHistorico();
+  carregarDashboard();
 
   document.getElementById('btn-mes-anterior').addEventListener('click', () => {
     mesAtual = proximoMes(mesAtual, -1);
     escutarLancamentosDoMes();
+    atualizarStatsDashboard();
   });
   document.getElementById('btn-mes-proximo').addEventListener('click', () => {
     mesAtual = proximoMes(mesAtual, 1);
     escutarLancamentosDoMes();
+    atualizarStatsDashboard();
+  });
+  document.getElementById('btn-dash-mes-anterior').addEventListener('click', () => {
+    mesAtual = proximoMes(mesAtual, -1);
+    escutarLancamentosDoMes();
+    atualizarStatsDashboard();
+  });
+  document.getElementById('btn-dash-mes-proximo').addEventListener('click', () => {
+    mesAtual = proximoMes(mesAtual, 1);
+    escutarLancamentosDoMes();
+    atualizarStatsDashboard();
   });
   document.getElementById('btn-add-colaborador').addEventListener('click', adicionarColaboradorAoMes);
   document.getElementById('btn-add-todos').addEventListener('click', adicionarTodosColaboradoresAoMes);
@@ -326,6 +378,8 @@ function escutarColaboradores() {
     renderColaboradoresTable();
     renderSelectAddColaborador();
     renderLancamentoTable(); // recalcula com dados de colaborador atualizados
+    const statAtivos = document.getElementById('stat-colaboradores-ativos');
+    if (statAtivos) statAtivos.textContent = Array.from(colaboradoresMap.values()).filter(c => c.ativo).length;
   });
 }
 
@@ -539,7 +593,7 @@ function renderLancamentoTable() {
 }
 
 // ── Histórico ───────────────────────────────────────────────────
-async function carregarHistorico() {
+async function calcularResumoPorMes() {
   const snap = await getDocs(collection(db, 'lancamentos'));
   const porMes = new Map();
   snap.forEach(d => {
@@ -557,7 +611,11 @@ async function carregarHistorico() {
     atual.totalPlano += calc.totalPlano;
     porMes.set(l.mesReferencia, atual);
   });
+  return porMes;
+}
 
+async function carregarHistorico() {
+  const porMes = await calcularResumoPorMes();
   const tbody = document.getElementById('historico-tbody');
   const meses = Array.from(porMes.entries()).sort((a, b) => b[0].localeCompare(a[0]));
   if (meses.length === 0) {
@@ -577,8 +635,59 @@ async function carregarHistorico() {
     btn.addEventListener('click', () => {
       mesAtual = btn.dataset.abrirMes;
       escutarLancamentosDoMes();
+      atualizarStatsDashboard();
       document.querySelector('.tab-btn[data-tab="lancamento"]').click();
     });
+  });
+}
+
+// ── Dashboard ───────────────────────────────────────────────────
+let chartEvolucao = null;
+let resumoPorMesCache = new Map();
+
+function atualizarStatsDashboard() {
+  const label = document.getElementById('dash-mes-atual-label');
+  if (label) label.textContent = formatMes(mesAtual);
+
+  const ativos = Array.from(colaboradoresMap.values()).filter(c => c.ativo).length;
+  const statAtivos = document.getElementById('stat-colaboradores-ativos');
+  if (statAtivos) statAtivos.textContent = ativos;
+
+  const doMesAtual = resumoPorMesCache.get(mesAtual);
+  const statFlash = document.getElementById('stat-flash-mes');
+  const statPlano = document.getElementById('stat-plano-mes');
+  if (statFlash) statFlash.textContent = formatBRL(doMesAtual ? doMesAtual.totalFlash : 0);
+  if (statPlano) statPlano.textContent = formatBRL(doMesAtual ? doMesAtual.totalPlano : 0);
+}
+
+async function carregarDashboard() {
+  resumoPorMesCache = await calcularResumoPorMes();
+  const meses = Array.from(resumoPorMesCache.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  const ultimosMeses = meses.slice(-12);
+
+  atualizarStatsDashboard();
+
+  const ctx = document.getElementById('chart-evolucao').getContext('2d');
+  const labels = ultimosMeses.map(([mes]) => formatMes(mes));
+  const dadosFlash = ultimosMeses.map(([, r]) => r.totalFlash);
+  const dadosPlano = ultimosMeses.map(([, r]) => r.totalPlano);
+
+  if (chartEvolucao) chartEvolucao.destroy();
+  chartEvolucao = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Total FLASH (V.A.+V.T.)', data: dadosFlash, backgroundColor: '#2E8CC7' },
+        { label: 'Total plano de saúde', data: dadosPlano, backgroundColor: '#1B8A5A' },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: { y: { beginAtZero: true, ticks: { callback: v => formatBRL(v) } } },
+      plugins: { tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${formatBRL(ctx.parsed.y)}` } } },
+    },
   });
 }
 
