@@ -37,7 +37,7 @@ header .user-area button:hover{background:rgba(255,255,255,.22)}
 }
 .tab-btn:hover{color:#fff;background:rgba(255,255,255,.08)}
 .tab-btn.active{color:var(--navy);background:var(--g50)}
-.tab-pane{display:none;padding:28px 32px;max-width:1180px;margin:0 auto}
+.tab-pane{display:none;padding:28px 32px;max-width:1500px;margin:0 auto}
 .tab-pane.active{display:block}
 
 h1{font-size:19px;color:var(--navy);margin-bottom:2px}
@@ -67,15 +67,17 @@ h1{font-size:19px;color:var(--navy);margin-bottom:2px}
 .btn-ghost{background:var(--g100);color:var(--g700)}
 .btn-ghost:hover{background:var(--g200)}
 
-table{width:100%;border-collapse:collapse;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
 thead th{
   text-align:left;font-size:11.5px;font-weight:700;color:var(--g500);text-transform:uppercase;
-  letter-spacing:.02em;padding:10px 12px;background:var(--g50);border-bottom:1.5px solid var(--g200);
+  letter-spacing:.02em;padding:12px 14px;background:var(--g50);border-bottom:1.5px solid var(--g200);
+  white-space:nowrap;
 }
-tbody td{padding:9px 12px;border-bottom:1px solid var(--g100)}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--g100)}
 tbody tr:last-child td{border-bottom:none}
-.num-input{width:56px;padding:6px 8px;font-size:13px;border:1.5px solid var(--g200);border-radius:6px;text-align:center}
-.co-input{width:78px}
+tbody td:first-child{min-width:220px;white-space:nowrap}
+.num-input{width:68px;padding:7px 8px;font-size:13.5px;border:1.5px solid var(--g200);border-radius:6px;text-align:center}
+.co-input{width:90px}
 .badge{padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:600;cursor:pointer;border:none}
 .badge.ativo{background:#E4F5EC;color:var(--green)}
 .badge.inativo{background:var(--g100);color:var(--g500)}
@@ -125,6 +127,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <select id="select-add-colaborador"><option value="">Selecione...</option></select>
       </div>
       <button class="btn btn-primary" id="btn-add-colaborador">Adicionar</button>
+      <button class="btn btn-ghost" id="btn-add-todos">Adicionar todos os colaboradores ativos</button>
     </div>
 
     <div class="card" style="padding:0;overflow-x:auto">
@@ -221,7 +224,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc, updateDoc,
-  onSnapshot, query, where
+  onSnapshot, query, where, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -309,6 +312,7 @@ function iniciarApp() {
     escutarLancamentosDoMes();
   });
   document.getElementById('btn-add-colaborador').addEventListener('click', adicionarColaboradorAoMes);
+  document.getElementById('btn-add-todos').addEventListener('click', adicionarTodosColaboradoresAoMes);
   document.getElementById('btn-exportar').addEventListener('click', exportarMesAtual);
   document.getElementById('btn-add-colab').addEventListener('click', criarColaborador);
   document.getElementById('btn-salvar-config').addEventListener('click', salvarConfig);
@@ -431,6 +435,28 @@ async function adicionarColaboradorAoMes() {
     faltasAtestado: 0,
     coParticipacao: 0,
   });
+}
+
+async function adicionarTodosColaboradoresAoMes() {
+  const idsNoMes = new Set(lancamentosDoMes.keys());
+  const faltando = Array.from(colaboradoresMap.entries()).filter(([id, c]) => c.ativo && !idsNoMes.has(id));
+  if (faltando.length === 0) return;
+  if (!confirm(`Adicionar os ${faltando.length} colaboradores ativos que ainda não estão em ${formatMes(mesAtual)}?`)) return;
+
+  const batch = writeBatch(db);
+  for (const [id] of faltando) {
+    const docId = `${mesAtual}_${id}`;
+    batch.set(doc(db, 'lancamentos', docId), {
+      mesReferencia: mesAtual,
+      colaboradorId: id,
+      diasNoMes: diasNoMesPadrao(mesAtual),
+      diasNaoUteis: 0,
+      diasHomeOffice: 0,
+      faltasAtestado: 0,
+      coParticipacao: 0,
+    });
+  }
+  await batch.commit();
 }
 
 function renderLancamentoTable() {
