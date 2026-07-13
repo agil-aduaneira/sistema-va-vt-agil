@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>V.A. + V.T. — Agil Aduaneira</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0B2355;--navy2:#1A3F7A;--blue:#2E8CC7;
+  --g50:#F4F7FB;--g100:#E9EEF5;--g200:#D4DCE8;--g400:#7D8EA6;--g500:#52657D;--g700:#253A56;--g800:#152438;
+  --red:#C0392B;--green:#1B8A5A;
+  --font:'Segoe UI',system-ui,sans-serif;
+}
+html,body{height:100%}
+body{font-family:var(--font);background:var(--g50);color:var(--g800);min-height:100vh}
+#app{display:none}
+
+header{
+  background:linear-gradient(105deg,var(--navy) 0%,var(--navy2) 55%,var(--blue) 100%);
+  color:#fff;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+}
+header .brand{font-size:16px;font-weight:700}
+header .brand-sub{font-size:11px;color:rgba(255,255,255,.6);margin-top:2px}
+header .user-area{display:flex;align-items:center;gap:16px;font-size:13px}
+header .user-area button{
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;
+  padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12.5px;font-family:var(--font);
+}
+header .user-area button:hover{background:rgba(255,255,255,.22)}
+
+.tab-bar{background:var(--navy2);padding:0 32px;display:flex;gap:4px}
+.tab-btn{
+  padding:11px 20px;font-size:13px;font-weight:600;color:rgba(255,255,255,.6);
+  border:none;background:transparent;cursor:pointer;font-family:var(--font);border-radius:8px 8px 0 0;
+}
+.tab-btn:hover{color:#fff;background:rgba(255,255,255,.08)}
+.tab-btn.active{color:var(--navy);background:var(--g50)}
+.tab-pane{display:none;padding:28px 32px;max-width:1180px;margin:0 auto}
+.tab-pane.active{display:block}
+
+h1{font-size:19px;color:var(--navy);margin-bottom:2px}
+.subtitle{font-size:13px;color:var(--g500);margin-bottom:20px}
+
+.card{background:#fff;border:1px solid var(--g200);border-radius:12px;padding:20px;margin-bottom:20px}
+.form-row{display:flex;gap:14px;flex-wrap:wrap;align-items:end}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;font-weight:600;color:var(--g700)}
+.field input,.field select{
+  padding:9px 11px;font-size:13.5px;border:1.5px solid var(--g200);border-radius:8px;
+  outline:none;font-family:var(--font);background:var(--g50);color:var(--g800);
+}
+.field input:focus,.field select:focus{border-color:var(--blue);background:#fff}
+
+.btn{
+  padding:9px 18px;font-size:13px;font-weight:600;border:none;border-radius:8px;cursor:pointer;
+  font-family:var(--font);white-space:nowrap;
+}
+.btn-primary{background:var(--green);color:#fff}
+.btn-primary:hover{opacity:.9}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-dark{background:var(--navy);color:#fff}
+.btn-dark:hover{opacity:.9}
+.btn-link{background:none;color:var(--red);font-size:12px;padding:2px 4px}
+.btn-link:hover{text-decoration:underline}
+.btn-ghost{background:var(--g100);color:var(--g700)}
+.btn-ghost:hover{background:var(--g200)}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{
+  text-align:left;font-size:11.5px;font-weight:700;color:var(--g500);text-transform:uppercase;
+  letter-spacing:.02em;padding:10px 12px;background:var(--g50);border-bottom:1.5px solid var(--g200);
+}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--g100)}
+tbody tr:last-child td{border-bottom:none}
+.num-input{width:56px;padding:6px 8px;font-size:13px;border:1.5px solid var(--g200);border-radius:6px;text-align:center}
+.co-input{width:78px}
+.badge{padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:600;cursor:pointer;border:none}
+.badge.ativo{background:#E4F5EC;color:var(--green)}
+.badge.inativo{background:var(--g100);color:var(--g500)}
+tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padding:12px}
+.month-nav{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.month-nav span{font-weight:600;color:var(--navy);min-width:150px;text-align:center}
+.empty-msg{padding:24px;text-align:center;color:var(--g400)}
+.saving-tag{font-size:11px;color:var(--g400);margin-left:6px}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <div>
+      <div class="brand">V.A. + V.T. — Agil Aduaneira</div>
+      <div class="brand-sub">Cálculo mensal de Vale Alimentação, Vale Transporte e plano de saúde</div>
+    </div>
+    <div class="user-area">
+      <span id="user-email"></span>
+      <button id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="lancamento">Lançamento Mensal</button>
+    <button class="tab-btn" data-tab="colaboradores">Colaboradores</button>
+    <button class="tab-btn" data-tab="parametros">Parâmetros</button>
+    <button class="tab-btn" data-tab="historico">Histórico</button>
+  </div>
+
+  <!-- ═══ LANÇAMENTO MENSAL ═══ -->
+  <div class="tab-pane active" id="tab-lancamento">
+    <h1>Lançamento mensal</h1>
+    <div class="subtitle">V.A. e V.T. recalculados automaticamente conforme os dias informados.</div>
+
+    <div class="month-nav">
+      <button class="btn btn-ghost" id="btn-mes-anterior">&larr; anterior</button>
+      <span id="mes-atual-label"></span>
+      <button class="btn btn-ghost" id="btn-mes-proximo">próximo &rarr;</button>
+      <button class="btn btn-dark" id="btn-exportar" style="margin-left:auto">Exportar .xlsx</button>
+    </div>
+
+    <div class="card form-row">
+      <div class="field" style="flex:1;min-width:220px">
+        <label>Adicionar colaborador a este mês</label>
+        <select id="select-add-colaborador"><option value="">Selecione...</option></select>
+      </div>
+      <button class="btn btn-primary" id="btn-add-colaborador">Adicionar</button>
+    </div>
+
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Colaborador</th><th>Mês</th><th>Não úteis</th><th>Home</th><th>Faltas/Atest.</th>
+            <th>Dias úteis</th><th>V.A.</th><th>V.T.</th><th>FLASH</th><th>P. Saúde</th>
+            <th>Co-part.</th><th>TT Plano</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="lancamento-tbody"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="8">Total do mês</td>
+            <td id="total-flash">R$ 0,00</td>
+            <td colspan="2"></td>
+            <td id="total-plano">R$ 0,00</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ COLABORADORES ═══ -->
+  <div class="tab-pane" id="tab-colaboradores">
+    <h1>Colaboradores</h1>
+    <div class="subtitle">Cadastro único — não precisa ser digitado de novo todo mês.</div>
+
+    <div class="card form-row" id="form-colaborador">
+      <div class="field" style="flex:2;min-width:200px">
+        <label>Nome</label>
+        <input type="text" id="input-nome">
+      </div>
+      <div class="field">
+        <label>Salário base</label>
+        <input type="number" step="0.01" id="input-salario">
+      </div>
+      <div class="field">
+        <label>Plano de saúde</label>
+        <input type="number" step="0.01" id="input-plano">
+      </div>
+      <button class="btn btn-primary" id="btn-add-colab">Adicionar colaborador</button>
+    </div>
+
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table>
+        <thead><tr><th>Nome</th><th>Salário base</th><th>Plano de saúde</th><th>Status</th><th></th></tr></thead>
+        <tbody id="colaboradores-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ PARÂMETROS ═══ -->
+  <div class="tab-pane" id="tab-parametros">
+    <h1>Parâmetros gerais</h1>
+    <div class="subtitle">Valor diário de Vale Alimentação e Vale Transporte, usado no cálculo de todos os colaboradores e meses.</div>
+
+    <div class="card" style="max-width:380px">
+      <div class="form-row" style="flex-direction:column;align-items:stretch;gap:14px">
+        <div class="field">
+          <label>Valor diário V.A. (R$)</label>
+          <input type="number" step="0.01" id="input-va">
+        </div>
+        <div class="field">
+          <label>Valor diário V.T. (R$)</label>
+          <input type="number" step="0.01" id="input-vt">
+        </div>
+        <button class="btn btn-primary" id="btn-salvar-config">Salvar</button>
+        <span id="config-saved" style="display:none;color:var(--green);font-size:13px">Salvo!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ HISTÓRICO ═══ -->
+  <div class="tab-pane" id="tab-historico">
+    <h1>Histórico</h1>
+    <div class="subtitle">Meses já lançados no sistema.</div>
+
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table>
+        <thead><tr><th>Mês</th><th>Colaboradores</th><th>Total FLASH</th><th>Total plano de saúde</th><th></th></tr></thead>
+        <tbody id="historico-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc, updateDoc,
+  onSnapshot, query, where
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyD4iNhFZdeCtm6Kejj6CTPMDI6yXWUoYNc",
+  authDomain:        "sistema-va-vt-agil.firebaseapp.com",
+  projectId:         "sistema-va-vt-agil",
+  storageBucket:     "sistema-va-vt-agil.firebasestorage.app",
+  messagingSenderId: "387389020299",
+  appId:             "1:387389020299:web:955a06382bda3122585c8e"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { window.location.href = 'login.html'; return; }
+  document.getElementById('user-email').textContent = user.email;
+  document.getElementById('app').style.display = 'block';
+  iniciarApp();
+});
+
+document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
+
+// ── Tabs ─────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Fórmulas de cálculo (mesma lógica do sistema original) ────────
+function calcMonthlyEntry({ diasNoMes, diasNaoUteis, diasHomeOffice, faltasAtestado, coParticipacao, valorPlanoSaude, valorDiarioVA, valorDiarioVT }) {
+  const diasUteis = diasNoMes - diasNaoUteis - faltasAtestado;
+  const round2 = v => Math.round((v + Number.EPSILON) * 100) / 100;
+  const valorVA = round2(diasUteis * valorDiarioVA);
+  const valorVT = round2((diasUteis - diasHomeOffice) * valorDiarioVT);
+  const totalFlash = round2(valorVA + valorVT);
+  const totalPlano = round2(valorPlanoSaude + coParticipacao);
+  return { diasUteis, valorVA, valorVT, totalFlash, totalPlano };
+}
+function formatBRL(v) {
+  return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+function formatMes(mesRef) {
+  const [ano, mes] = mesRef.split('-');
+  return `${MESES_PT[Number(mes) - 1]} de ${ano}`;
+}
+function diasNoMesPadrao(mesRef) {
+  const [ano, mes] = mesRef.split('-').map(Number);
+  return new Date(ano, mes, 0).getDate();
+}
+function proximoMes(mesRef, delta) {
+  const [ano, mes] = mesRef.split('-').map(Number);
+  const d = new Date(ano, mes - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function mesAtualStr() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// ── Estado em memória ──────────────────────────────────────────
+let colaboradoresMap = new Map(); // id -> {nome, salarioBase, valorPlanoSaude, ativo}
+let config = { valorDiarioVA: 0, valorDiarioVT: 0 };
+let mesAtual = mesAtualStr();
+let unsubLancamentos = null;
+
+function iniciarApp() {
+  escutarColaboradores();
+  escutarConfig();
+  escutarLancamentosDoMes();
+  carregarHistorico();
+
+  document.getElementById('btn-mes-anterior').addEventListener('click', () => {
+    mesAtual = proximoMes(mesAtual, -1);
+    escutarLancamentosDoMes();
+  });
+  document.getElementById('btn-mes-proximo').addEventListener('click', () => {
+    mesAtual = proximoMes(mesAtual, 1);
+    escutarLancamentosDoMes();
+  });
+  document.getElementById('btn-add-colaborador').addEventListener('click', adicionarColaboradorAoMes);
+  document.getElementById('btn-exportar').addEventListener('click', exportarMesAtual);
+  document.getElementById('btn-add-colab').addEventListener('click', criarColaborador);
+  document.getElementById('btn-salvar-config').addEventListener('click', salvarConfig);
+}
+
+// ── Colaboradores (CRUD + tempo real) ──────────────────────────
+function escutarColaboradores() {
+  onSnapshot(collection(db, 'colaboradores'), snap => {
+    colaboradoresMap.clear();
+    snap.forEach(d => colaboradoresMap.set(d.id, d.data()));
+    renderColaboradoresTable();
+    renderSelectAddColaborador();
+    renderLancamentoTable(); // recalcula com dados de colaborador atualizados
+  });
+}
+
+function renderColaboradoresTable() {
+  const tbody = document.getElementById('colaboradores-tbody');
+  const linhas = Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
+  if (linhas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">Nenhum colaborador cadastrado ainda.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = linhas.map(([id, c]) => `
+    <tr>
+      <td>${c.nome}</td>
+      <td>${formatBRL(c.salarioBase)}</td>
+      <td>${c.valorPlanoSaude > 0 ? formatBRL(c.valorPlanoSaude) : '—'}</td>
+      <td><button class="badge ${c.ativo ? 'ativo' : 'inativo'}" data-toggle-id="${id}" data-ativo="${c.ativo}">${c.ativo ? 'Ativo' : 'Inativo'}</button></td>
+      <td style="text-align:right"><button class="btn-link" data-del-id="${id}">Excluir</button></td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('[data-toggle-id]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.toggleId;
+      const ativo = btn.dataset.ativo === 'true';
+      await updateDoc(doc(db, 'colaboradores', id), { ativo: !ativo });
+    });
+  });
+  tbody.querySelectorAll('[data-del-id]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.delId;
+      const nome = colaboradoresMap.get(id)?.nome ?? '';
+      if (!confirm(`Excluir ${nome}?`)) return;
+      await deleteDoc(doc(db, 'colaboradores', id));
+    });
+  });
+}
+
+async function criarColaborador() {
+  const nome = document.getElementById('input-nome').value.trim();
+  const salarioBase = Number(document.getElementById('input-salario').value || 0);
+  const valorPlanoSaude = Number(document.getElementById('input-plano').value || 0);
+  if (!nome || !salarioBase) { alert('Nome e salário base são obrigatórios.'); return; }
+  const id = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  await setDoc(doc(db, 'colaboradores', id), { nome, salarioBase, valorPlanoSaude, ativo: true });
+  document.getElementById('input-nome').value = '';
+  document.getElementById('input-salario').value = '';
+  document.getElementById('input-plano').value = '';
+}
+
+// ── Parâmetros ──────────────────────────────────────────────────
+function escutarConfig() {
+  onSnapshot(doc(db, 'config', 'geral'), snap => {
+    if (snap.exists()) {
+      config = snap.data();
+      document.getElementById('input-va').value = config.valorDiarioVA;
+      document.getElementById('input-vt').value = config.valorDiarioVT;
+      renderLancamentoTable();
+    }
+  });
+}
+
+async function salvarConfig() {
+  const valorDiarioVA = Number(document.getElementById('input-va').value || 0);
+  const valorDiarioVT = Number(document.getElementById('input-vt').value || 0);
+  await setDoc(doc(db, 'config', 'geral'), { valorDiarioVA, valorDiarioVT });
+  const tag = document.getElementById('config-saved');
+  tag.style.display = 'inline';
+  setTimeout(() => tag.style.display = 'none', 2000);
+}
+
+// ── Lançamento mensal ───────────────────────────────────────────
+let lancamentosDoMes = new Map(); // employeeId -> {id, ...campos}
+
+function escutarLancamentosDoMes() {
+  document.getElementById('mes-atual-label').textContent = formatMes(mesAtual);
+  document.getElementById('btn-exportar').dataset.mes = mesAtual;
+  if (unsubLancamentos) unsubLancamentos();
+  const q = query(collection(db, 'lancamentos'), where('mesReferencia', '==', mesAtual));
+  unsubLancamentos = onSnapshot(q, snap => {
+    lancamentosDoMes.clear();
+    snap.forEach(d => lancamentosDoMes.set(d.data().colaboradorId, { id: d.id, ...d.data() }));
+    renderLancamentoTable();
+    renderSelectAddColaborador();
+  });
+}
+
+function renderSelectAddColaborador() {
+  const select = document.getElementById('select-add-colaborador');
+  const idsNoMes = new Set(lancamentosDoMes.keys());
+  const disponiveis = Array.from(colaboradoresMap.entries())
+    .filter(([id, c]) => c.ativo && !idsNoMes.has(id))
+    .sort((a, b) => a[1].nome.localeCompare(b[1].nome));
+  select.innerHTML = '<option value="">Selecione...</option>' +
+    disponiveis.map(([id, c]) => `<option value="${id}">${c.nome}</option>`).join('');
+}
+
+async function adicionarColaboradorAoMes() {
+  const id = document.getElementById('select-add-colaborador').value;
+  if (!id) return;
+  const docId = `${mesAtual}_${id}`;
+  await setDoc(doc(db, 'lancamentos', docId), {
+    mesReferencia: mesAtual,
+    colaboradorId: id,
+    diasNoMes: diasNoMesPadrao(mesAtual),
+    diasNaoUteis: 0,
+    diasHomeOffice: 0,
+    faltasAtestado: 0,
+    coParticipacao: 0,
+  });
+}
+
+function renderLancamentoTable() {
+  const tbody = document.getElementById('lancamento-tbody');
+  const linhas = Array.from(lancamentosDoMes.values())
+    .map(l => ({ l, c: colaboradoresMap.get(l.colaboradorId) }))
+    .filter(x => x.c)
+    .sort((a, b) => a.c.nome.localeCompare(b.c.nome));
+
+  if (linhas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="13" class="empty-msg">Nenhum colaborador lançado neste mês ainda.</td></tr>';
+    document.getElementById('total-flash').textContent = formatBRL(0);
+    document.getElementById('total-plano').textContent = formatBRL(0);
+    return;
+  }
+
+  let totalFlash = 0, totalPlano = 0;
+  tbody.innerHTML = linhas.map(({ l, c }) => {
+    const calc = calcMonthlyEntry({
+      diasNoMes: l.diasNoMes, diasNaoUteis: l.diasNaoUteis, diasHomeOffice: l.diasHomeOffice,
+      faltasAtestado: l.faltasAtestado, coParticipacao: l.coParticipacao,
+      valorPlanoSaude: c.valorPlanoSaude, valorDiarioVA: config.valorDiarioVA, valorDiarioVT: config.valorDiarioVT,
+    });
+    totalFlash += calc.totalFlash;
+    totalPlano += calc.totalPlano;
+    return `
+      <tr data-row-id="${l.colaboradorId}">
+        <td>${c.nome}</td>
+        <td><input type="number" min="0" class="num-input" data-field="diasNoMes" value="${l.diasNoMes}"></td>
+        <td><input type="number" min="0" class="num-input" data-field="diasNaoUteis" value="${l.diasNaoUteis}"></td>
+        <td><input type="number" min="0" class="num-input" data-field="diasHomeOffice" value="${l.diasHomeOffice}"></td>
+        <td><input type="number" min="0" class="num-input" data-field="faltasAtestado" value="${l.faltasAtestado}"></td>
+        <td>${calc.diasUteis}</td>
+        <td>${formatBRL(calc.valorVA)}</td>
+        <td>${formatBRL(calc.valorVT)}</td>
+        <td><strong>${formatBRL(calc.totalFlash)}</strong></td>
+        <td>${c.valorPlanoSaude > 0 ? formatBRL(c.valorPlanoSaude) : '—'}</td>
+        <td><input type="number" min="0" step="0.01" class="num-input co-input" data-field="coParticipacao" value="${l.coParticipacao}"></td>
+        <td><strong>${formatBRL(calc.totalPlano)}</strong></td>
+        <td style="text-align:right"><button class="btn-link" data-remove-id="${l.colaboradorId}">Remover</button></td>
+      </tr>
+    `;
+  }).join('');
+
+  document.getElementById('total-flash').textContent = formatBRL(totalFlash);
+  document.getElementById('total-plano').textContent = formatBRL(totalPlano);
+
+  tbody.querySelectorAll('input[data-field]').forEach(input => {
+    input.addEventListener('input', () => {
+      const tr = input.closest('tr');
+      const employeeId = tr.dataset.rowId;
+      const l = lancamentosDoMes.get(employeeId);
+      l[input.dataset.field] = Number(input.value || 0);
+      renderLancamentoTable(); // recalcula tudo em tempo real (sem persistir ainda)
+      // reposiciona foco no mesmo input após o rerender
+      const novoInput = document.querySelector(`tr[data-row-id="${employeeId}"] input[data-field="${input.dataset.field}"]`);
+      if (novoInput) { novoInput.focus(); novoInput.setSelectionRange(novoInput.value.length, novoInput.value.length); }
+    });
+    input.addEventListener('blur', async () => {
+      const tr = input.closest('tr');
+      const employeeId = tr.dataset.rowId;
+      const l = lancamentosDoMes.get(employeeId);
+      await setDoc(doc(db, 'lancamentos', l.id), {
+        mesReferencia: l.mesReferencia, colaboradorId: l.colaboradorId,
+        diasNoMes: l.diasNoMes, diasNaoUteis: l.diasNaoUteis,
+        diasHomeOffice: l.diasHomeOffice, faltasAtestado: l.faltasAtestado,
+        coParticipacao: l.coParticipacao,
+      });
+    });
+  });
+  tbody.querySelectorAll('[data-remove-id]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const employeeId = btn.dataset.removeId;
+      const l = lancamentosDoMes.get(employeeId);
+      const nome = colaboradoresMap.get(employeeId)?.nome ?? '';
+      if (!confirm(`Remover ${nome} do lançamento de ${formatMes(mesAtual)}?`)) return;
+      await deleteDoc(doc(db, 'lancamentos', l.id));
+    });
+  });
+}
+
+// ── Histórico ───────────────────────────────────────────────────
+async function carregarHistorico() {
+  const snap = await getDocs(collection(db, 'lancamentos'));
+  const porMes = new Map();
+  snap.forEach(d => {
+    const l = d.data();
+    const c = colaboradoresMap.get(l.colaboradorId);
+    if (!c) return;
+    const calc = calcMonthlyEntry({
+      diasNoMes: l.diasNoMes, diasNaoUteis: l.diasNaoUteis, diasHomeOffice: l.diasHomeOffice,
+      faltasAtestado: l.faltasAtestado, coParticipacao: l.coParticipacao,
+      valorPlanoSaude: c.valorPlanoSaude, valorDiarioVA: config.valorDiarioVA, valorDiarioVT: config.valorDiarioVT,
+    });
+    const atual = porMes.get(l.mesReferencia) || { colaboradores: 0, totalFlash: 0, totalPlano: 0 };
+    atual.colaboradores += 1;
+    atual.totalFlash += calc.totalFlash;
+    atual.totalPlano += calc.totalPlano;
+    porMes.set(l.mesReferencia, atual);
+  });
+
+  const tbody = document.getElementById('historico-tbody');
+  const meses = Array.from(porMes.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  if (meses.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">Nenhum mês lançado ainda.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = meses.map(([mes, r]) => `
+    <tr>
+      <td>${formatMes(mes)}</td>
+      <td>${r.colaboradores}</td>
+      <td>${formatBRL(r.totalFlash)}</td>
+      <td>${formatBRL(r.totalPlano)}</td>
+      <td style="text-align:right"><button class="btn-link" style="color:var(--blue)" data-abrir-mes="${mes}">Abrir</button></td>
+    </tr>
+  `).join('');
+  tbody.querySelectorAll('[data-abrir-mes]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      mesAtual = btn.dataset.abrirMes;
+      escutarLancamentosDoMes();
+      document.querySelector('.tab-btn[data-tab="lancamento"]').click();
+    });
+  });
+}
+
+// ── Exportação .xlsx ─────────────────────────────────────────────
+function exportarMesAtual() {
+  const linhas = Array.from(lancamentosDoMes.values())
+    .map(l => ({ l, c: colaboradoresMap.get(l.colaboradorId) }))
+    .filter(x => x.c)
+    .sort((a, b) => a.c.nome.localeCompare(b.c.nome));
+
+  const header = ['COLABORADOR','SAL. BASE','MÊS','NÃO ÚTEIS','HOME','FALTAS / ATESTADO','DIAS ÚTEIS','V.A.','V.T.','FLASH','P. SAÚDE','CO-PART.','TT PLANO'];
+  const rows = linhas.map(({ l, c }) => {
+    const calc = calcMonthlyEntry({
+      diasNoMes: l.diasNoMes, diasNaoUteis: l.diasNaoUteis, diasHomeOffice: l.diasHomeOffice,
+      faltasAtestado: l.faltasAtestado, coParticipacao: l.coParticipacao,
+      valorPlanoSaude: c.valorPlanoSaude, valorDiarioVA: config.valorDiarioVA, valorDiarioVT: config.valorDiarioVT,
+    });
+    return [c.nome, c.salarioBase, l.diasNoMes, l.diasNaoUteis, l.diasHomeOffice, l.faltasAtestado,
+      calc.diasUteis, calc.valorVA, calc.valorVT, calc.totalFlash, c.valorPlanoSaude, l.coParticipacao, calc.totalPlano];
+  });
+  const totalFlash = rows.reduce((s, r) => s + r[9], 0);
+  const totalPlano = rows.reduce((s, r) => s + r[12], 0);
+  rows.push(['TOTAL','','','','','','','','',totalFlash,'','',totalPlano]);
+
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, mesAtual);
+  XLSX.writeFile(wb, `folha-${mesAtual}.xlsx`);
+}
+</script>
+</body>
+</html>

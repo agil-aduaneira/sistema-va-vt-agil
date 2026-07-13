@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agil Aduaneira — V.A. + V.T.</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0B2355;--navy2:#1A3F7A;--blue:#2E8CC7;
+  --g50:#F4F7FB;--g100:#E9EEF5;--g200:#D4DCE8;--g400:#7D8EA6;--g500:#52657D;--g700:#253A56;--g800:#152438;
+  --red:#C0392B;
+  --font:'Segoe UI',system-ui,sans-serif;
+  --sh-card:0 8px 40px rgba(11,35,85,.28),0 2px 8px rgba(0,0,0,.12);
+  --r10:10px;--r12:12px;--r20:20px;
+}
+html,body{height:100%;font-family:var(--font)}
+body{
+  background:linear-gradient(160deg,#07182E 0%,#0B2355 55%,#0F2D66 100%);
+  display:flex;align-items:center;justify-content:center;min-height:100vh;
+}
+.card{
+  background:rgba(255,255,255,.97);border-radius:var(--r20);box-shadow:var(--sh-card);
+  width:100%;max-width:400px;overflow:hidden;animation:fadeUp .3s ease;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.card-header{
+  background:linear-gradient(105deg,var(--navy) 0%,var(--navy2) 55%,var(--blue) 100%);
+  padding:2rem 2rem 1.5rem;text-align:center;
+}
+.brand-name{font-size:19px;font-weight:700;color:#fff}
+.brand-sub{font-size:11px;color:rgba(255,255,255,.6);margin-top:6px;letter-spacing:.06em;text-transform:uppercase}
+.card-body{padding:2rem}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--g700);margin-bottom:5px}
+.field input{
+  width:100%;padding:11px 13px;font-size:13.5px;color:var(--g800);font-family:var(--font);
+  background:var(--g50);border:1.5px solid var(--g200);border-radius:var(--r10);outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,140,199,.18);background:#fff}
+.error-msg{
+  display:none;align-items:center;gap:7px;background:#FEF0EE;border:1px solid #F5C6C0;
+  border-radius:9px;padding:9px 12px;font-size:12px;color:var(--red);font-weight:500;margin-bottom:14px;
+}
+.btn-primary{
+  width:100%;padding:12px;background:linear-gradient(105deg,var(--navy) 0%,var(--navy2) 55%,var(--blue) 100%);
+  color:#fff;font-size:14px;font-weight:600;font-family:var(--font);border:none;border-radius:var(--r10);
+  cursor:pointer;transition:opacity .15s;
+}
+.btn-primary:hover:not(:disabled){opacity:.9}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed}
+.footer-text{margin-top:16px;font-size:11px;color:var(--g400);text-align:center}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.shake{animation:shake .36s ease}
+</style>
+</head>
+<body>
+
+<div class="card" id="login-card">
+  <div class="card-header">
+    <div class="brand-name">Agil Aduaneira</div>
+    <div class="brand-sub">V.A. + V.T. — Cálculo Mensal</div>
+  </div>
+  <div class="card-body">
+    <div id="login-error" class="error-msg"></div>
+    <form id="login-form">
+      <div class="field">
+        <label for="email">E-mail</label>
+        <input type="email" id="email" required autocomplete="email" placeholder="seu@agil.com.br">
+      </div>
+      <div class="field">
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn-primary" id="btn-login">Entrar</button>
+    </form>
+    <div class="footer-text">Acesso restrito — uso interno Agil Aduaneira</div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth, signInWithEmailAndPassword, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey:            "AIzaSyD4iNhFZdeCtm6Kejj6CTPMDI6yXWUoYNc",
+    authDomain:        "sistema-va-vt-agil.firebaseapp.com",
+    projectId:         "sistema-va-vt-agil",
+    storageBucket:     "sistema-va-vt-agil.firebasestorage.app",
+    messagingSenderId: "387389020299",
+    appId:             "1:387389020299:web:955a06382bda3122585c8e"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  onAuthStateChanged(auth, user => {
+    if (user) window.location.href = 'index.html';
+  });
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    const senha = document.getElementById('senha').value;
+    const btn   = document.getElementById('btn-login');
+    clearError();
+    btn.disabled = true;
+    btn.textContent = 'Entrando...';
+    try {
+      await signInWithEmailAndPassword(auth, email, senha);
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Entrar';
+      showError(firebaseError(err.code));
+      shakeForm();
+    }
+  });
+
+  function firebaseError(code) {
+    const map = {
+      'auth/invalid-email':          'E-mail inválido.',
+      'auth/user-not-found':         'Nenhuma conta encontrada com este e-mail.',
+      'auth/wrong-password':         'Senha incorreta. Tente novamente.',
+      'auth/invalid-credential':     'E-mail ou senha incorretos.',
+      'auth/too-many-requests':      'Muitas tentativas. Aguarde alguns minutos.',
+      'auth/user-disabled':          'Esta conta foi desativada.',
+      'auth/network-request-failed': 'Falha de rede. Verifique sua conexão.',
+    };
+    return map[code] || 'Erro inesperado. Tente novamente.';
+  }
+  function showError(msg) {
+    const el = document.getElementById('login-error');
+    el.textContent = msg; el.style.display = 'flex';
+  }
+  function clearError() {
+    const el = document.getElementById('login-error');
+    el.style.display = 'none'; el.textContent = '';
+  }
+  function shakeForm() {
+    const card = document.getElementById('login-card');
+    card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
+  }
+</script>
+</body>
+</html>
