@@ -83,6 +83,8 @@ tbody tr:last-child td{border-bottom:none}
 #tab-colaboradores thead th:first-child{width:36px;text-align:center}
 #lancamento-tbody td:first-child{width:36px;text-align:center}
 #lancamento-tbody td:nth-child(2){min-width:220px;white-space:nowrap}
+#decimo-tbody td:first-child{width:36px;text-align:center}
+#decimo-tbody td:nth-child(2){min-width:220px;white-space:nowrap}
 #tab-lancamento thead th:first-child{width:36px;text-align:center}
 .num-input{width:68px;padding:7px 8px;font-size:13.5px;border:1.5px solid var(--g200);border-radius:6px;text-align:center}
 .co-input{width:90px}
@@ -385,13 +387,17 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <label>Retorno em</label>
         <input type="date" id="input-periodo-retorno">
       </div>
+      <div class="field" style="flex:1;min-width:220px">
+        <label>Observações</label>
+        <input type="text" id="input-periodo-observacoes" placeholder="Ex.: precisa ser oficializada em agosto/2026">
+      </div>
       <button class="btn btn-primary" id="btn-add-periodo">Adicionar período</button>
     </div>
 
     <div class="card" style="padding:0;overflow-x:auto">
       <table>
-        <thead><tr><th>#</th><th>Limite até</th><th>Gozada de</th><th>Gozada até</th><th>Retorno</th><th>Alerta</th><th></th></tr></thead>
-        <tbody id="ferias-tbody"><tr><td colspan="7" class="empty-msg">Selecione um colaborador acima.</td></tr></tbody>
+        <thead><tr><th>#</th><th>Limite até</th><th>Gozada de</th><th>Gozada até</th><th>Retorno</th><th>Observações</th><th>Alerta</th><th></th></tr></thead>
+        <tbody id="ferias-tbody"><tr><td colspan="8" class="empty-msg">Selecione um colaborador acima.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -411,10 +417,36 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       <button class="btn btn-dark" id="btn-decimo-add-todos">Adicionar todos os colaboradores ativos</button>
     </div>
 
+    <div class="card form-row">
+      <div class="field">
+        <label>Valor 1ª parcela (marcados)</label>
+        <input type="number" min="0" step="0.01" class="num-input" id="input-bulk-valor1" style="width:100px">
+      </div>
+      <button class="btn btn-dark" id="btn-bulk-valor1">Aplicar aos marcados</button>
+      <div class="field" style="margin-left:20px">
+        <label>Data 1ª parcela (marcados)</label>
+        <input type="date" id="input-bulk-data1">
+      </div>
+      <button class="btn btn-dark" id="btn-bulk-data1">Aplicar aos marcados</button>
+    </div>
+    <div class="card form-row">
+      <div class="field">
+        <label>Valor 2ª parcela (marcados)</label>
+        <input type="number" min="0" step="0.01" class="num-input" id="input-bulk-valor2" style="width:100px">
+      </div>
+      <button class="btn btn-dark" id="btn-bulk-valor2">Aplicar aos marcados</button>
+      <div class="field" style="margin-left:20px">
+        <label>Data 2ª parcela (marcados)</label>
+        <input type="date" id="input-bulk-data2">
+      </div>
+      <button class="btn btn-dark" id="btn-bulk-data2">Aplicar aos marcados</button>
+    </div>
+
     <div class="card table-scroll" style="padding:0">
       <table>
         <thead>
           <tr>
+            <th><input type="checkbox" id="chk-select-all-decimo" title="Selecionar todos"></th>
             <th>Colaborador</th><th>Valor 1ª parcela</th><th>Data 1ª parcela</th>
             <th>Valor 2ª parcela</th><th>Data 2ª parcela</th><th></th>
           </tr>
@@ -438,7 +470,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
 
     <div class="card form-row">
       <div class="field">
-        <label>Data</label>
+        <label id="label-dossie-data">A partir de</label>
         <input type="date" id="input-dossie-data">
       </div>
       <div class="field" style="min-width:200px">
@@ -455,9 +487,17 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
           <option value="Outro">Outro</option>
         </select>
       </div>
-      <div class="field" style="flex:1;min-width:220px">
+      <div class="field" id="campo-dossie-descricao" style="flex:1;min-width:220px;display:none">
         <label>Descrição</label>
         <input type="text" id="input-dossie-descricao">
+      </div>
+      <div class="field" id="campo-dossie-de">
+        <label>Valor anterior</label>
+        <input type="text" id="input-dossie-de">
+      </div>
+      <div class="field" id="campo-dossie-para">
+        <label>Valor novo</label>
+        <input type="text" id="input-dossie-para">
       </div>
       <div class="field" id="campo-dossie-anexo" style="display:none">
         <label>Anexar atestado</label>
@@ -675,6 +715,27 @@ function iniciarApp() {
   });
   document.getElementById('btn-decimo-add-todos').addEventListener('click', adicionarTodosDecimoAoAno);
 
+  document.getElementById('chk-select-all-decimo').addEventListener('change', (e) => {
+    const marcarTodos = e.target.checked;
+    selecionadosDecimo.clear();
+    if (marcarTodos) {
+      for (const colaboradorId of decimosDoAno.keys()) selecionadosDecimo.add(colaboradorId);
+    }
+    renderDecimoTable();
+  });
+  document.getElementById('btn-bulk-valor1').addEventListener('click', () => {
+    aplicarEmLoteDecimo('valorParcela1', Number(document.getElementById('input-bulk-valor1').value || 0));
+  });
+  document.getElementById('btn-bulk-data1').addEventListener('click', () => {
+    aplicarEmLoteDecimo('dataParcela1', document.getElementById('input-bulk-data1').value || null);
+  });
+  document.getElementById('btn-bulk-valor2').addEventListener('click', () => {
+    aplicarEmLoteDecimo('valorParcela2', Number(document.getElementById('input-bulk-valor2').value || 0));
+  });
+  document.getElementById('btn-bulk-data2').addEventListener('click', () => {
+    aplicarEmLoteDecimo('dataParcela2', document.getElementById('input-bulk-data2').value || null);
+  });
+
   document.getElementById('select-ferias-colaborador').addEventListener('change', (e) => {
     feriasColaboradorId = e.target.value;
     const c = colaboradoresMap.get(feriasColaboradorId);
@@ -688,7 +749,13 @@ function iniciarApp() {
     escutarDossie(e.target.value);
   });
   document.getElementById('input-dossie-tipo').addEventListener('change', (e) => {
-    document.getElementById('campo-dossie-anexo').style.display = e.target.value === 'Atestado' ? 'flex' : 'none';
+    const tipo = e.target.value;
+    const ehMudanca = tipo === 'Mudança de cargo' || tipo === 'Mudança de salário';
+    document.getElementById('campo-dossie-anexo').style.display = tipo === 'Atestado' ? 'flex' : 'none';
+    document.getElementById('campo-dossie-descricao').style.display = ehMudanca ? 'none' : 'flex';
+    document.getElementById('campo-dossie-de').style.display = ehMudanca ? 'flex' : 'none';
+    document.getElementById('campo-dossie-para').style.display = ehMudanca ? 'flex' : 'none';
+    document.getElementById('label-dossie-data').textContent = ehMudanca ? 'A partir de' : 'Data';
   });
   document.getElementById('btn-add-dossie').addEventListener('click', criarRegistroDossie);
 }
@@ -1275,6 +1342,7 @@ function formatarDataBR(dataISO) {
 let anoAtual = new Date().getFullYear();
 let decimosDoAno = new Map(); // employeeId -> {id, ...campos}
 let unsubDecimos = null;
+let selecionadosDecimo = new Set();
 
 function escutarDecimosDoAno() {
   document.getElementById('ano-atual-label').textContent = String(anoAtual);
@@ -1295,12 +1363,13 @@ function renderDecimoTable() {
     .sort((a, b) => a.c.nome.localeCompare(b.c.nome));
 
   if (linhas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Nenhum colaborador lançado neste ano ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">Nenhum colaborador lançado neste ano ainda.</td></tr>';
     return;
   }
 
   tbody.innerHTML = linhas.map(({ l, c }) => `
     <tr data-decimo-id="${l.colaboradorId}">
+      <td><input type="checkbox" data-select-decimo-id="${l.colaboradorId}" ${selecionadosDecimo.has(l.colaboradorId) ? 'checked' : ''}></td>
       <td>${c.nome}</td>
       <td><input type="number" min="0" step="0.01" class="num-input co-input" data-campo="valorParcela1" value="${l.valorParcela1 || 0}"></td>
       <td><input type="date" data-campo="dataParcela1" value="${l.dataParcela1 || ''}"></td>
@@ -1310,6 +1379,15 @@ function renderDecimoTable() {
     </tr>
   `).join('');
 
+  tbody.querySelectorAll('[data-select-decimo-id]').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const colaboradorId = chk.dataset.selectDecimoId;
+      if (chk.checked) selecionadosDecimo.add(colaboradorId);
+      else selecionadosDecimo.delete(colaboradorId);
+      const chkAll = document.getElementById('chk-select-all-decimo');
+      if (chkAll) chkAll.checked = linhas.every(({ l }) => selecionadosDecimo.has(l.colaboradorId));
+    });
+  });
   tbody.querySelectorAll('[data-campo]').forEach(input => {
     input.addEventListener('change', async () => {
       const tr = input.closest('tr');
@@ -1330,8 +1408,31 @@ function renderDecimoTable() {
       const nome = colaboradoresMap.get(employeeId)?.nome ?? '';
       if (!confirm(`Remover ${nome} do 13º de ${anoAtual}?`)) return;
       await deleteDoc(doc(db, 'decimoTerceiro', l.id));
+      selecionadosDecimo.delete(employeeId);
     });
   });
+}
+
+async function aplicarEmLoteDecimo(campo, valor) {
+  if (selecionadosDecimo.size === 0) {
+    alert('Marque pelo menos um colaborador na tabela antes de aplicar.');
+    return;
+  }
+  const batch = writeBatch(db);
+  let atualizados = 0;
+  for (const colaboradorId of selecionadosDecimo) {
+    const l = decimosDoAno.get(colaboradorId);
+    if (!l) continue;
+    l[campo] = valor;
+    batch.set(doc(db, 'decimoTerceiro', l.id), {
+      ano: anoAtual, colaboradorId: l.colaboradorId,
+      valorParcela1: l.valorParcela1 || 0, dataParcela1: l.dataParcela1 || null,
+      valorParcela2: l.valorParcela2 || 0, dataParcela2: l.dataParcela2 || null,
+    });
+    atualizados++;
+  }
+  if (atualizados > 0) await batch.commit();
+  renderDecimoTable();
 }
 
 async function adicionarTodosDecimoAoAno() {
@@ -1400,7 +1501,7 @@ function renderFeriasTable() {
   const periodos = (todasFeriasMap.get(feriasColaboradorId) || []).slice()
     .sort((a, b) => (a.limite || '').localeCompare(b.limite || ''));
   if (periodos.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">Nenhum período cadastrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-msg">Nenhum período cadastrado ainda.</td></tr>';
     return;
   }
   tbody.innerHTML = periodos.map((p, i) => {
@@ -1412,6 +1513,7 @@ function renderFeriasTable() {
         <td>${p.gozadaInicio ? formatarDataBR(p.gozadaInicio) : '—'}</td>
         <td>${p.gozadaFim ? formatarDataBR(p.gozadaFim) : '—'}</td>
         <td>${p.retorno ? formatarDataBR(p.retorno) : '—'}</td>
+        <td>${p.observacoes || '—'}</td>
         <td><span class="badge ${alerta.classe}">${alerta.texto}</span></td>
         <td style="text-align:right"><button class="btn-link" data-del-periodo="${p.id}">Excluir</button></td>
       </tr>
@@ -1438,13 +1540,15 @@ async function criarPeriodoFerias() {
   const gozadaInicio = document.getElementById('input-periodo-gozada-inicio').value || null;
   const gozadaFim = document.getElementById('input-periodo-gozada-fim').value || null;
   const retorno = document.getElementById('input-periodo-retorno').value || null;
+  const observacoes = document.getElementById('input-periodo-observacoes').value.trim() || null;
   if (!limite) { alert('Informe ao menos a data limite.'); return; }
 
-  await setDoc(doc(collection(db, 'ferias')), { colaboradorId: feriasColaboradorId, limite, gozadaInicio, gozadaFim, retorno });
+  await setDoc(doc(collection(db, 'ferias')), { colaboradorId: feriasColaboradorId, limite, gozadaInicio, gozadaFim, retorno, observacoes });
   document.getElementById('input-periodo-limite').value = '';
   document.getElementById('input-periodo-gozada-inicio').value = '';
   document.getElementById('input-periodo-gozada-fim').value = '';
   document.getElementById('input-periodo-retorno').value = '';
+  document.getElementById('input-periodo-observacoes').value = '';
 }
 
 function estaDeFeriasNoMes(colaboradorId, mesReferencia) {
@@ -1528,12 +1632,17 @@ async function criarRegistroDossie() {
   const colaboradorId = document.getElementById('select-dossie-colaborador').value;
   const data = document.getElementById('input-dossie-data').value;
   const tipo = document.getElementById('input-dossie-tipo').value;
-  const descricao = document.getElementById('input-dossie-descricao').value.trim();
+  const ehMudanca = tipo === 'Mudança de cargo' || tipo === 'Mudança de salário';
+  const de = document.getElementById('input-dossie-de').value.trim();
+  const para = document.getElementById('input-dossie-para').value.trim();
+  const descricao = ehMudanca ? `De: ${de} → Para: ${para}` : document.getElementById('input-dossie-descricao').value.trim();
   const arquivoInput = document.getElementById('input-dossie-anexo');
   const arquivo = arquivoInput.files[0];
 
   if (!colaboradorId) { alert('Selecione um colaborador primeiro.'); return; }
-  if (!data || !descricao) { alert('Data e descrição são obrigatórios.'); return; }
+  if (!data) { alert('Data é obrigatória.'); return; }
+  if (ehMudanca && (!de || !para)) { alert('Informe o valor anterior e o valor novo.'); return; }
+  if (!ehMudanca && !descricao) { alert('Descrição é obrigatória.'); return; }
 
   const btn = document.getElementById('btn-add-dossie');
   btn.disabled = true;
@@ -1552,6 +1661,8 @@ async function criarRegistroDossie() {
 
     document.getElementById('input-dossie-data').value = '';
     document.getElementById('input-dossie-descricao').value = '';
+    document.getElementById('input-dossie-de').value = '';
+    document.getElementById('input-dossie-para').value = '';
     arquivoInput.value = '';
   } catch (err) {
     alert('Erro ao salvar (se for anexo, o Storage do Firebase pode ainda não estar ativado): ' + err.message);
