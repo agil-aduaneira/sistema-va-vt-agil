@@ -228,6 +228,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <input type="number" step="0.01" id="input-plano">
       </div>
       <button class="btn btn-primary" id="btn-add-colab">Adicionar colaborador</button>
+      <button class="btn btn-ghost" id="btn-cancelar-edicao" style="display:none">Cancelar</button>
     </div>
 
     <div class="card" style="padding:0;overflow-x:auto">
@@ -384,6 +385,7 @@ function iniciarApp() {
   document.getElementById('btn-add-todos').addEventListener('click', adicionarTodosColaboradoresAoMes);
   document.getElementById('btn-exportar').addEventListener('click', exportarMesAtual);
   document.getElementById('btn-add-colab').addEventListener('click', criarColaborador);
+  document.getElementById('btn-cancelar-edicao').addEventListener('click', cancelarEdicaoColaborador);
   document.getElementById('btn-salvar-config').addEventListener('click', salvarConfig);
 
   document.getElementById('chk-select-all').addEventListener('change', (e) => {
@@ -430,7 +432,10 @@ function renderColaboradoresTable() {
       <td>${formatBRL(c.salarioBase)}</td>
       <td>${c.valorPlanoSaude > 0 ? formatBRL(c.valorPlanoSaude) : '—'}</td>
       <td><button class="badge ${c.ativo ? 'ativo' : 'inativo'}" data-toggle-id="${id}" data-ativo="${c.ativo}">${c.ativo ? 'Ativo' : 'Inativo'}</button></td>
-      <td style="text-align:right"><button class="btn-link" data-del-id="${id}">Excluir</button></td>
+      <td style="text-align:right">
+        <button class="btn-link" style="color:var(--blue)" data-edit-id="${id}">Editar</button>
+        <button class="btn-link" data-del-id="${id}">Excluir</button>
+      </td>
     </tr>
   `).join('');
 
@@ -441,14 +446,41 @@ function renderColaboradoresTable() {
       await updateDoc(doc(db, 'colaboradores', id), { ativo: !ativo });
     });
   });
+  tbody.querySelectorAll('[data-edit-id]').forEach(btn => {
+    btn.addEventListener('click', () => iniciarEdicaoColaborador(btn.dataset.editId));
+  });
   tbody.querySelectorAll('[data-del-id]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.delId;
       const nome = colaboradoresMap.get(id)?.nome ?? '';
       if (!confirm(`Excluir ${nome}?`)) return;
       await deleteDoc(doc(db, 'colaboradores', id));
+      if (editandoColaboradorId === id) cancelarEdicaoColaborador();
     });
   });
+}
+
+let editandoColaboradorId = null;
+
+function iniciarEdicaoColaborador(id) {
+  const c = colaboradoresMap.get(id);
+  if (!c) return;
+  editandoColaboradorId = id;
+  document.getElementById('input-nome').value = c.nome;
+  document.getElementById('input-salario').value = c.salarioBase;
+  document.getElementById('input-plano').value = c.valorPlanoSaude || '';
+  document.getElementById('btn-add-colab').textContent = 'Salvar alterações';
+  document.getElementById('btn-cancelar-edicao').style.display = 'inline-block';
+  document.getElementById('input-nome').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function cancelarEdicaoColaborador() {
+  editandoColaboradorId = null;
+  document.getElementById('input-nome').value = '';
+  document.getElementById('input-salario').value = '';
+  document.getElementById('input-plano').value = '';
+  document.getElementById('btn-add-colab').textContent = 'Adicionar colaborador';
+  document.getElementById('btn-cancelar-edicao').style.display = 'none';
 }
 
 async function criarColaborador() {
@@ -456,6 +488,13 @@ async function criarColaborador() {
   const salarioBase = Number(document.getElementById('input-salario').value || 0);
   const valorPlanoSaude = Number(document.getElementById('input-plano').value || 0);
   if (!nome || !salarioBase) { alert('Nome e salário base são obrigatórios.'); return; }
+
+  if (editandoColaboradorId) {
+    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), { nome, salarioBase, valorPlanoSaude });
+    cancelarEdicaoColaborador();
+    return;
+  }
+
   const id = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   await setDoc(doc(db, 'colaboradores', id), { nome, salarioBase, valorPlanoSaude, ativo: true });
   document.getElementById('input-nome').value = '';
