@@ -169,10 +169,24 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       <button class="btn btn-dark" id="btn-add-todos">Adicionar todos os colaboradores ativos</button>
     </div>
 
+    <div class="card form-row">
+      <div class="field">
+        <label>Não úteis (colaboradores marcados)</label>
+        <input type="number" min="0" class="num-input" id="input-bulk-nao-uteis" style="width:80px">
+      </div>
+      <button class="btn btn-ghost" id="btn-bulk-nao-uteis">Aplicar aos marcados</button>
+      <div class="field" style="margin-left:20px">
+        <label>Home (colaboradores marcados)</label>
+        <input type="number" min="0" class="num-input" id="input-bulk-home" style="width:80px">
+      </div>
+      <button class="btn btn-ghost" id="btn-bulk-home">Aplicar aos marcados</button>
+    </div>
+
     <div class="card" style="padding:0;overflow-x:auto">
       <table>
         <thead>
           <tr>
+            <th><input type="checkbox" id="chk-select-all" title="Selecionar todos"></th>
             <th>Colaborador</th><th>Mês</th><th>Não úteis</th><th>Home</th><th>Faltas/Atest.</th>
             <th>Dias úteis</th><th>V.A.</th><th>V.T.</th><th>FLASH</th><th>P. Saúde</th>
             <th>Co-part.</th><th>TT Plano</th><th></th>
@@ -181,7 +195,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <tbody id="lancamento-tbody"></tbody>
         <tfoot>
           <tr>
-            <td colspan="8">Total do mês</td>
+            <td colspan="9">Total do mês</td>
             <td id="total-flash">R$ 0,00</td>
             <td colspan="2"></td>
             <td id="total-plano">R$ 0,00</td>
@@ -368,6 +382,23 @@ function iniciarApp() {
   document.getElementById('btn-exportar').addEventListener('click', exportarMesAtual);
   document.getElementById('btn-add-colab').addEventListener('click', criarColaborador);
   document.getElementById('btn-salvar-config').addEventListener('click', salvarConfig);
+
+  document.getElementById('chk-select-all').addEventListener('change', (e) => {
+    const marcarTodos = e.target.checked;
+    selecionadosMes.clear();
+    if (marcarTodos) {
+      for (const employeeId of lancamentosDoMes.keys()) selecionadosMes.add(employeeId);
+    }
+    renderLancamentoTable();
+  });
+  document.getElementById('btn-bulk-nao-uteis').addEventListener('click', () => {
+    const valor = Number(document.getElementById('input-bulk-nao-uteis').value || 0);
+    aplicarEmLote('diasNaoUteis', valor);
+  });
+  document.getElementById('btn-bulk-home').addEventListener('click', () => {
+    const valor = Number(document.getElementById('input-bulk-home').value || 0);
+    aplicarEmLote('diasHomeOffice', valor);
+  });
 }
 
 // ── Colaboradores (CRUD + tempo real) ──────────────────────────
@@ -452,10 +483,14 @@ async function salvarConfig() {
 
 // ── Lançamento mensal ───────────────────────────────────────────
 let lancamentosDoMes = new Map(); // employeeId -> {id, ...campos}
+let selecionadosMes = new Set(); // employeeIds marcados via checkbox
 
 function escutarLancamentosDoMes() {
   document.getElementById('mes-atual-label').textContent = formatMes(mesAtual);
   document.getElementById('btn-exportar').dataset.mes = mesAtual;
+  selecionadosMes.clear();
+  const chkAll = document.getElementById('chk-select-all');
+  if (chkAll) chkAll.checked = false;
   if (unsubLancamentos) unsubLancamentos();
   const q = query(collection(db, 'lancamentos'), where('mesReferencia', '==', mesAtual));
   unsubLancamentos = onSnapshot(q, snap => {
@@ -521,7 +556,7 @@ function renderLancamentoTable() {
     .sort((a, b) => a.c.nome.localeCompare(b.c.nome));
 
   if (linhas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="13" class="empty-msg">Nenhum colaborador lançado neste mês ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14" class="empty-msg">Nenhum colaborador lançado neste mês ainda.</td></tr>';
     document.getElementById('total-flash').textContent = formatBRL(0);
     document.getElementById('total-plano').textContent = formatBRL(0);
     return;
@@ -538,6 +573,7 @@ function renderLancamentoTable() {
     totalPlano += calc.totalPlano;
     return `
       <tr data-row-id="${l.colaboradorId}">
+        <td><input type="checkbox" data-select-id="${l.colaboradorId}" ${selecionadosMes.has(l.colaboradorId) ? 'checked' : ''}></td>
         <td>${c.nome}</td>
         <td><input type="number" min="0" class="num-input" data-field="diasNoMes" value="${l.diasNoMes}"></td>
         <td><input type="number" min="0" class="num-input" data-field="diasNaoUteis" value="${l.diasNaoUteis}"></td>
@@ -581,6 +617,15 @@ function renderLancamentoTable() {
       });
     });
   });
+  tbody.querySelectorAll('[data-select-id]').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const employeeId = chk.dataset.selectId;
+      if (chk.checked) selecionadosMes.add(employeeId);
+      else selecionadosMes.delete(employeeId);
+      const chkAll = document.getElementById('chk-select-all');
+      if (chkAll) chkAll.checked = linhas.every(({ l }) => selecionadosMes.has(l.colaboradorId));
+    });
+  });
   tbody.querySelectorAll('[data-remove-id]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const employeeId = btn.dataset.removeId;
@@ -588,8 +633,32 @@ function renderLancamentoTable() {
       const nome = colaboradoresMap.get(employeeId)?.nome ?? '';
       if (!confirm(`Remover ${nome} do lançamento de ${formatMes(mesAtual)}?`)) return;
       await deleteDoc(doc(db, 'lancamentos', l.id));
+      selecionadosMes.delete(employeeId);
     });
   });
+}
+
+async function aplicarEmLote(campo, valor) {
+  if (selecionadosMes.size === 0) {
+    alert('Marque pelo menos um colaborador na tabela antes de aplicar.');
+    return;
+  }
+  const batch = writeBatch(db);
+  let atualizados = 0;
+  for (const employeeId of selecionadosMes) {
+    const l = lancamentosDoMes.get(employeeId);
+    if (!l) continue;
+    l[campo] = valor;
+    batch.set(doc(db, 'lancamentos', l.id), {
+      mesReferencia: l.mesReferencia, colaboradorId: l.colaboradorId,
+      diasNoMes: l.diasNoMes, diasNaoUteis: l.diasNaoUteis,
+      diasHomeOffice: l.diasHomeOffice, faltasAtestado: l.faltasAtestado,
+      coParticipacao: l.coParticipacao,
+    });
+    atualizados++;
+  }
+  if (atualizados > 0) await batch.commit();
+  renderLancamentoTable();
 }
 
 // ── Histórico ───────────────────────────────────────────────────
