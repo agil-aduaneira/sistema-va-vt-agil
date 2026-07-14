@@ -89,6 +89,8 @@ tbody tr:last-child td{border-bottom:none}
 .badge{padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:600;cursor:pointer;border:none}
 .badge.ativo{background:#E4F5EC;color:var(--green)}
 .badge.inativo{background:var(--g100);color:var(--g500)}
+.badge.vencido{background:#FEF0EE;color:var(--red)}
+.badge.a-vencer{background:#FEF6E6;color:#B8860B}
 tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padding:12px}
 .month-nav{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
 .month-nav span{font-weight:600;color:var(--navy);min-width:150px;text-align:center}
@@ -147,6 +149,10 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       <div class="stat-card">
         <div class="stat-label">Plano de saúde no mês</div>
         <div class="stat-value" id="stat-plano-mes">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">ASOs pendentes</div>
+        <div class="stat-value" id="stat-aso-pendentes">—</div>
       </div>
     </div>
 
@@ -242,6 +248,14 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <label>Tipo de V.T.</label>
         <select id="input-rota"><option value="">V.T. normal</option></select>
       </div>
+      <div class="field">
+        <label>Data do último ASO</label>
+        <input type="date" id="input-aso-data">
+      </div>
+      <div class="field" style="width:120px">
+        <label>Periodicidade (meses)</label>
+        <input type="number" min="1" id="input-aso-periodicidade" value="12">
+      </div>
       <button class="btn btn-primary" id="btn-add-colab">Adicionar colaborador</button>
       <button class="btn btn-ghost" id="btn-cancelar-edicao" style="display:none">Cancelar</button>
     </div>
@@ -270,7 +284,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
           <tr>
             <th><input type="checkbox" id="chk-select-all-colab" title="Selecionar todos"></th>
             <th>Nome</th><th>Salário base</th><th>Plano de saúde</th><th>Status</th>
-            <th>V.A.</th><th>V.T.</th><th></th>
+            <th>V.A.</th><th>V.T.</th><th>ASO</th><th></th>
           </tr>
         </thead>
         <tbody id="colaboradores-tbody"></tbody>
@@ -531,21 +545,37 @@ function escutarColaboradores() {
     renderColaboradoresTable();
     renderSelectAddColaborador();
     renderLancamentoTable(); // recalcula com dados de colaborador atualizados
-    const statAtivos = document.getElementById('stat-colaboradores-ativos');
-    if (statAtivos) statAtivos.textContent = Array.from(colaboradoresMap.values()).filter(c => c.ativo).length;
+    atualizarStatsDashboard();
   });
+}
+
+// Retorna o status do ASO: 'sem-data' (nunca cadastrado), 'vencido', 'a-vencer' (30 dias antes
+// do limite) ou 'em-dia'.
+function calcularStatusASO(c) {
+  if (!c.asoData) return { status: 'sem-data', texto: 'Não informado', classe: 'inativo' };
+  const periodicidade = Number(c.asoPeriodicidade) || 12;
+  const ultima = new Date(c.asoData + 'T00:00:00');
+  const proxima = new Date(ultima);
+  proxima.setMonth(proxima.getMonth() + periodicidade);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const diasParaVencer = Math.round((proxima - hoje) / 86400000);
+  if (diasParaVencer < 0) return { status: 'vencido', texto: 'Vencido', classe: 'vencido' };
+  if (diasParaVencer <= 30) return { status: 'a-vencer', texto: `Vence em ${diasParaVencer}d`, classe: 'a-vencer' };
+  return { status: 'em-dia', texto: 'Em dia', classe: 'ativo' };
 }
 
 function renderColaboradoresTable() {
   const tbody = document.getElementById('colaboradores-tbody');
   const linhas = Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
   if (linhas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-msg">Nenhum colaborador cadastrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">Nenhum colaborador cadastrado ainda.</td></tr>';
     return;
   }
   tbody.innerHTML = linhas.map(([id, c]) => {
     const recebeVA = c.recebeVA !== false;
     const recebeVT = c.recebeVT !== false;
+    const aso = calcularStatusASO(c);
     return `
     <tr>
       <td><input type="checkbox" data-select-colab-id="${id}" ${selecionadosColab.has(id) ? 'checked' : ''}></td>
@@ -555,6 +585,7 @@ function renderColaboradoresTable() {
       <td><button class="badge ${c.ativo ? 'ativo' : 'inativo'}" data-toggle-id="${id}" data-ativo="${c.ativo}">${c.ativo ? 'Ativo' : 'Inativo'}</button></td>
       <td><button class="badge ${recebeVA ? 'ativo' : 'inativo'}" data-toggle-va="${id}" data-va="${recebeVA}">${recebeVA ? 'Recebe' : 'Não recebe'}</button></td>
       <td><button class="badge ${recebeVT ? 'ativo' : 'inativo'}" data-toggle-vt="${id}" data-vt="${recebeVT}">${recebeVT ? 'Recebe' : 'Não recebe'}</button></td>
+      <td><span class="badge ${aso.classe}" title="${c.asoData ? 'Último ASO: ' + c.asoData : 'ASO nunca cadastrado'}">${aso.texto}</span></td>
       <td style="text-align:right">
         <button class="btn-link" style="color:var(--blue)" data-edit-id="${id}">Editar</button>
         <button class="btn-link" data-del-id="${id}">Excluir</button>
@@ -641,6 +672,8 @@ function iniciarEdicaoColaborador(id) {
   definirBadgeForm('toggle-form-va', c.recebeVA !== false);
   definirBadgeForm('toggle-form-vt', c.recebeVT !== false);
   document.getElementById('input-rota').value = c.rotaId || '';
+  document.getElementById('input-aso-data').value = c.asoData || '';
+  document.getElementById('input-aso-periodicidade').value = c.asoPeriodicidade || 12;
   document.getElementById('btn-add-colab').textContent = 'Salvar alterações';
   document.getElementById('btn-cancelar-edicao').style.display = 'inline-block';
   document.getElementById('input-nome').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -654,6 +687,8 @@ function cancelarEdicaoColaborador() {
   definirBadgeForm('toggle-form-va', true);
   definirBadgeForm('toggle-form-vt', true);
   document.getElementById('input-rota').value = '';
+  document.getElementById('input-aso-data').value = '';
+  document.getElementById('input-aso-periodicidade').value = 12;
   document.getElementById('btn-add-colab').textContent = 'Adicionar colaborador';
   document.getElementById('btn-cancelar-edicao').style.display = 'none';
 }
@@ -665,16 +700,18 @@ async function criarColaborador() {
   const recebeVA = document.getElementById('toggle-form-va').dataset.value === 'true';
   const recebeVT = document.getElementById('toggle-form-vt').dataset.value === 'true';
   const rotaId = document.getElementById('input-rota').value || null;
+  const asoData = document.getElementById('input-aso-data').value || null;
+  const asoPeriodicidade = Number(document.getElementById('input-aso-periodicidade').value || 12);
   if (!nome || !salarioBase) { alert('Nome e salário base são obrigatórios.'); return; }
 
   if (editandoColaboradorId) {
-    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), { nome, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId });
+    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), { nome, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId, asoData, asoPeriodicidade });
     cancelarEdicaoColaborador();
     return;
   }
 
   const id = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  await setDoc(doc(db, 'colaboradores', id), { nome, salarioBase, valorPlanoSaude, ativo: true, recebeVA, recebeVT, rotaId });
+  await setDoc(doc(db, 'colaboradores', id), { nome, salarioBase, valorPlanoSaude, ativo: true, recebeVA, recebeVT, rotaId, asoData, asoPeriodicidade });
   cancelarEdicaoColaborador();
 }
 
@@ -993,6 +1030,14 @@ function atualizarStatsDashboard() {
   const statPlano = document.getElementById('stat-plano-mes');
   if (statFlash) statFlash.textContent = formatBRL(doMesAtual ? doMesAtual.totalFlash : 0);
   if (statPlano) statPlano.textContent = formatBRL(doMesAtual ? doMesAtual.totalPlano : 0);
+
+  const statAso = document.getElementById('stat-aso-pendentes');
+  if (statAso) {
+    const pendentes = Array.from(colaboradoresMap.values())
+      .filter(c => c.ativo)
+      .filter(c => ['sem-data', 'vencido', 'a-vencer'].includes(calcularStatusASO(c).status)).length;
+    statAso.textContent = pendentes;
+  }
 }
 
 async function carregarDashboard() {
