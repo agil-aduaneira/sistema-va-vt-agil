@@ -60,6 +60,20 @@ body{
 .footer-text{margin-top:16px;font-size:11px;color:var(--g400);text-align:center}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
 .shake{animation:shake .36s ease}
+.btn-link-row{text-align:center;margin-top:14px}
+.btn-ghost-link{
+  background:none;border:none;cursor:pointer;font-family:var(--font);
+  font-size:12.5px;color:var(--blue);font-weight:500;padding:4px 2px;
+}
+.btn-ghost-link:hover{color:var(--navy);text-decoration:underline}
+#screen-recover{display:none}
+.success-box{display:none;flex-direction:column;align-items:center;text-align:center;padding:.5rem 0;gap:10px}
+.success-icon{
+  width:48px;height:48px;background:#E8F5E9;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:22px;
+}
+.success-title{font-size:14.5px;font-weight:700;color:var(--navy)}
+.success-desc{font-size:12.5px;color:var(--g500);line-height:1.6}
 </style>
 </head>
 <body>
@@ -86,15 +100,47 @@ body{
         </div>
       </div>
       <button type="submit" class="btn-primary" id="btn-login">Entrar</button>
+      <div class="btn-link-row">
+        <button type="button" class="btn-ghost-link" id="btn-ir-recuperar">Esqueci minha senha</button>
+      </div>
     </form>
     <div class="footer-text">Acesso restrito — uso interno Agil Aduaneira</div>
+  </div>
+</div>
+
+<div class="card" id="recover-card" style="display:none">
+  <div class="card-header">
+    <div class="brand-name">Recuperar senha</div>
+    <div class="brand-sub">V.A. + V.T. — Agil Aduaneira</div>
+  </div>
+  <div class="card-body">
+    <div id="screen-recover">
+      <div id="rec-error" class="error-msg"></div>
+      <p style="font-size:12.5px;color:var(--g500);margin-bottom:14px">
+        Informe seu e-mail cadastrado — vamos enviar um link para você definir uma nova senha.
+      </p>
+      <div class="field">
+        <label for="rec-email">E-mail</label>
+        <input type="email" id="rec-email" placeholder="seu@agil.com.br">
+      </div>
+      <button type="button" class="btn-primary" id="btn-rec">Enviar link</button>
+      <div class="btn-link-row">
+        <button type="button" class="btn-ghost-link" id="btn-voltar-login">Voltar para o login</button>
+      </div>
+    </div>
+    <div id="rec-success" class="success-box">
+      <div class="success-icon">✓</div>
+      <div class="success-title">Link enviado!</div>
+      <div class="success-desc">Confira sua caixa de entrada (e o spam) para o link de redefinição de senha.</div>
+      <button type="button" class="btn-ghost-link" id="btn-voltar-login-2">Voltar para o login</button>
+    </div>
   </div>
 </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
-    getAuth, signInWithEmailAndPassword, onAuthStateChanged
+    getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   const firebaseConfig = {
@@ -141,6 +187,50 @@ body{
       shakeForm();
     }
   });
+
+  document.getElementById('btn-ir-recuperar').addEventListener('click', () => {
+    document.getElementById('login-card').style.display = 'none';
+    document.getElementById('recover-card').style.display = 'block';
+    document.getElementById('screen-recover').style.display = 'block';
+    document.getElementById('rec-success').style.display = 'none';
+  });
+
+  function voltarParaLogin() {
+    document.getElementById('recover-card').style.display = 'none';
+    document.getElementById('login-card').style.display = 'block';
+    clearRecError();
+    document.getElementById('rec-email').value = '';
+  }
+  document.getElementById('btn-voltar-login').addEventListener('click', voltarParaLogin);
+  document.getElementById('btn-voltar-login-2').addEventListener('click', voltarParaLogin);
+
+  document.getElementById('btn-rec').addEventListener('click', async () => {
+    const email = document.getElementById('rec-email').value.trim();
+    const btn = document.getElementById('btn-rec');
+    clearRecError();
+    if (!email) { showRecError('Informe seu e-mail.'); return; }
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+    try {
+      await sendPasswordResetEmail(auth, email);
+      document.getElementById('screen-recover').style.display = 'none';
+      document.getElementById('rec-success').style.display = 'flex';
+    } catch (err) {
+      showRecError(firebaseError(err.code));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Enviar link';
+    }
+  });
+
+  function showRecError(msg) {
+    const el = document.getElementById('rec-error');
+    el.textContent = msg; el.style.display = 'flex';
+  }
+  function clearRecError() {
+    const el = document.getElementById('rec-error');
+    el.style.display = 'none'; el.textContent = '';
+  }
 
   function firebaseError(code) {
     const map = {
