@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>V.A. + V.T. — Agil Aduaneira</title>
+<title>Setor Pessoal — Agil Aduaneira</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
@@ -73,10 +73,13 @@ thead th{
   text-align:left;font-size:11.5px;font-weight:700;color:var(--g500);text-transform:uppercase;
   letter-spacing:.02em;padding:12px 14px;background:var(--g50);border-bottom:1.5px solid var(--g200);
   white-space:nowrap;
+  position:sticky;top:0;z-index:2;
 }
 tbody td{padding:11px 14px;border-bottom:1px solid var(--g100)}
 tbody tr:last-child td{border-bottom:none}
-#colaboradores-tbody td:first-child{min-width:220px;white-space:nowrap}
+#colaboradores-tbody td:first-child{width:36px;text-align:center}
+#colaboradores-tbody td:nth-child(2){min-width:220px;white-space:nowrap}
+#tab-colaboradores thead th:first-child{width:36px;text-align:center}
 #lancamento-tbody td:first-child{width:36px;text-align:center}
 #lancamento-tbody td:nth-child(2){min-width:220px;white-space:nowrap}
 #tab-lancamento thead th:first-child{width:36px;text-align:center}
@@ -103,8 +106,8 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
 <div id="app">
   <header>
     <div>
-      <div class="brand">V.A. + V.T. — Agil Aduaneira</div>
-      <div class="brand-sub">Cálculo mensal de Vale Alimentação, Vale Transporte e plano de saúde</div>
+      <div class="brand">Setor Pessoal — Agil Aduaneira</div>
+      <div class="brand-sub">Cálculo de Vale Alimentação, Vale Transporte, plano de saúde e cadastro de colaboradores</div>
     </div>
     <div class="user-area">
       <span id="user-email"></span>
@@ -227,13 +230,48 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <label>Plano de saúde</label>
         <input type="number" step="0.01" id="input-plano">
       </div>
+      <div class="field">
+        <label>Benefícios</label>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="badge ativo" id="toggle-form-va" data-value="true">Recebe V.A.</button>
+          <button type="button" class="badge ativo" id="toggle-form-vt" data-value="true">Recebe V.T.</button>
+        </div>
+      </div>
+      <div class="field" style="min-width:220px">
+        <label>Tipo de V.T.</label>
+        <select id="input-rota"><option value="">V.T. normal</option></select>
+      </div>
       <button class="btn btn-primary" id="btn-add-colab">Adicionar colaborador</button>
       <button class="btn btn-ghost" id="btn-cancelar-edicao" style="display:none">Cancelar</button>
     </div>
 
+    <div class="card form-row">
+      <div class="field">
+        <label>V.A. (colaboradores marcados)</label>
+        <select id="select-bulk-va"><option value="true">Recebe</option><option value="false">Não recebe</option></select>
+      </div>
+      <button class="btn btn-dark" id="btn-bulk-va">Aplicar aos marcados</button>
+      <div class="field">
+        <label>V.T. (colaboradores marcados)</label>
+        <select id="select-bulk-vt"><option value="true">Recebe</option><option value="false">Não recebe</option></select>
+      </div>
+      <button class="btn btn-dark" id="btn-bulk-vt">Aplicar aos marcados</button>
+      <div class="field" style="min-width:220px">
+        <label>Tipo de V.T. (colaboradores marcados)</label>
+        <select id="select-bulk-rota"><option value="">V.T. normal</option></select>
+      </div>
+      <button class="btn btn-dark" id="btn-bulk-rota">Aplicar aos marcados</button>
+    </div>
+
     <div class="card" style="padding:0;overflow-x:auto">
       <table>
-        <thead><tr><th>Nome</th><th>Salário base</th><th>Plano de saúde</th><th>Status</th><th></th></tr></thead>
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="chk-select-all-colab" title="Selecionar todos"></th>
+            <th>Nome</th><th>Salário base</th><th>Plano de saúde</th><th>Status</th>
+            <th>V.A.</th><th>V.T.</th><th></th>
+          </tr>
+        </thead>
         <tbody id="colaboradores-tbody"></tbody>
       </table>
     </div>
@@ -257,6 +295,28 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <button class="btn btn-primary" id="btn-salvar-config">Salvar</button>
         <span id="config-saved" style="display:none;color:var(--green);font-size:13px">Salvo!</span>
       </div>
+    </div>
+
+    <h1 style="margin-top:36px">Transporte Intermunicipal</h1>
+    <div class="subtitle">Rotas com valor adicional de V.T. por dia — atribuíveis no cadastro do colaborador.</div>
+
+    <div class="card form-row">
+      <div class="field" style="flex:1;min-width:200px">
+        <label>Nome da rota</label>
+        <input type="text" id="input-rota-nome" placeholder="Ex.: Fortaleza-Maranguape">
+      </div>
+      <div class="field">
+        <label>Valor adicional diário (R$)</label>
+        <input type="number" step="0.01" id="input-rota-valor">
+      </div>
+      <button class="btn btn-primary" id="btn-add-rota">Adicionar rota</button>
+    </div>
+
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table>
+        <thead><tr><th>Rota</th><th>Valor adicional / dia</th><th></th></tr></thead>
+        <tbody id="rotas-tbody"></tbody>
+      </table>
     </div>
   </div>
 
@@ -326,6 +386,26 @@ function calcMonthlyEntry({ diasNoMes, diasNaoUteis, diasHomeOffice, faltasAtest
   const totalPlano = round2(valorPlanoSaude + coParticipacao);
   return { diasUteis, valorVA, valorVT, totalFlash, totalPlano };
 }
+
+// Aplica as regras por colaborador (recebe V.A./V.T., rota intermunicipal) sobre o cálculo puro.
+function calcularLinhaColaborador(entry, colaborador, config, rotasMap) {
+  const round2 = v => Math.round((v + Number.EPSILON) * 100) / 100;
+  const rota = colaborador.rotaId ? rotasMap.get(colaborador.rotaId) : null;
+  const valorDiarioVTEfetivo = config.valorDiarioVT + (rota ? Number(rota.valorAdicional) : 0);
+
+  const calc = calcMonthlyEntry({
+    diasNoMes: entry.diasNoMes, diasNaoUteis: entry.diasNaoUteis, diasHomeOffice: entry.diasHomeOffice,
+    faltasAtestado: entry.faltasAtestado, coParticipacao: entry.coParticipacao,
+    valorPlanoSaude: colaborador.valorPlanoSaude,
+    valorDiarioVA: config.valorDiarioVA, valorDiarioVT: valorDiarioVTEfetivo,
+  });
+
+  if (colaborador.recebeVA === false) calc.valorVA = 0;
+  if (colaborador.recebeVT === false) calc.valorVT = 0;
+  calc.totalFlash = round2(calc.valorVA + calc.valorVT);
+  return calc;
+}
+
 function formatBRL(v) {
   return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -349,13 +429,16 @@ function mesAtualStr() {
 }
 
 // ── Estado em memória ──────────────────────────────────────────
-let colaboradoresMap = new Map(); // id -> {nome, salarioBase, valorPlanoSaude, ativo}
+let colaboradoresMap = new Map(); // id -> {nome, salarioBase, valorPlanoSaude, ativo, recebeVA, recebeVT, rotaId}
+let rotasMap = new Map(); // id -> {nome, valorAdicional}
+let selecionadosColab = new Set();
 let config = { valorDiarioVA: 0, valorDiarioVT: 0 };
 let mesAtual = mesAtualStr();
 let unsubLancamentos = null;
 
 function iniciarApp() {
   escutarColaboradores();
+  escutarRotas();
   escutarConfig();
   escutarLancamentosDoMes();
   carregarHistorico();
@@ -404,6 +487,39 @@ function iniciarApp() {
     const valor = Number(document.getElementById('input-bulk-home').value || 0);
     aplicarEmLote('diasHomeOffice', valor);
   });
+
+  document.getElementById('toggle-form-va').addEventListener('click', (e) => alternarBadgeForm(e.target));
+  document.getElementById('toggle-form-vt').addEventListener('click', (e) => alternarBadgeForm(e.target));
+  document.getElementById('btn-add-rota').addEventListener('click', criarRota);
+
+  document.getElementById('chk-select-all-colab').addEventListener('change', (e) => {
+    const marcarTodos = e.target.checked;
+    selecionadosColab.clear();
+    if (marcarTodos) {
+      for (const id of colaboradoresMap.keys()) selecionadosColab.add(id);
+    }
+    renderColaboradoresTable();
+  });
+  document.getElementById('btn-bulk-va').addEventListener('click', () => {
+    aplicarEmLoteColaborador('recebeVA', document.getElementById('select-bulk-va').value === 'true');
+  });
+  document.getElementById('btn-bulk-vt').addEventListener('click', () => {
+    aplicarEmLoteColaborador('recebeVT', document.getElementById('select-bulk-vt').value === 'true');
+  });
+  document.getElementById('btn-bulk-rota').addEventListener('click', () => {
+    const valor = document.getElementById('select-bulk-rota').value;
+    aplicarEmLoteColaborador('rotaId', valor || null);
+  });
+}
+
+function alternarBadgeForm(btn) {
+  const ligado = btn.dataset.value === 'true';
+  btn.dataset.value = ligado ? 'false' : 'true';
+  btn.classList.toggle('ativo', !ligado);
+  btn.classList.toggle('inativo', ligado);
+  btn.textContent = ligado
+    ? btn.textContent.replace('Recebe', 'Não recebe')
+    : btn.textContent.replace('Não recebe', 'Recebe');
 }
 
 // ── Colaboradores (CRUD + tempo real) ──────────────────────────
@@ -423,27 +539,57 @@ function renderColaboradoresTable() {
   const tbody = document.getElementById('colaboradores-tbody');
   const linhas = Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
   if (linhas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">Nenhum colaborador cadastrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-msg">Nenhum colaborador cadastrado ainda.</td></tr>';
     return;
   }
-  tbody.innerHTML = linhas.map(([id, c]) => `
+  tbody.innerHTML = linhas.map(([id, c]) => {
+    const recebeVA = c.recebeVA !== false;
+    const recebeVT = c.recebeVT !== false;
+    return `
     <tr>
+      <td><input type="checkbox" data-select-colab-id="${id}" ${selecionadosColab.has(id) ? 'checked' : ''}></td>
       <td>${c.nome}</td>
       <td>${formatBRL(c.salarioBase)}</td>
       <td>${c.valorPlanoSaude > 0 ? formatBRL(c.valorPlanoSaude) : '—'}</td>
       <td><button class="badge ${c.ativo ? 'ativo' : 'inativo'}" data-toggle-id="${id}" data-ativo="${c.ativo}">${c.ativo ? 'Ativo' : 'Inativo'}</button></td>
+      <td><button class="badge ${recebeVA ? 'ativo' : 'inativo'}" data-toggle-va="${id}" data-va="${recebeVA}">${recebeVA ? 'Recebe' : 'Não recebe'}</button></td>
+      <td><button class="badge ${recebeVT ? 'ativo' : 'inativo'}" data-toggle-vt="${id}" data-vt="${recebeVT}">${recebeVT ? 'Recebe' : 'Não recebe'}</button></td>
       <td style="text-align:right">
         <button class="btn-link" style="color:var(--blue)" data-edit-id="${id}">Editar</button>
         <button class="btn-link" data-del-id="${id}">Excluir</button>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
+  tbody.querySelectorAll('[data-select-colab-id]').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const id = chk.dataset.selectColabId;
+      if (chk.checked) selecionadosColab.add(id);
+      else selecionadosColab.delete(id);
+      const chkAll = document.getElementById('chk-select-all-colab');
+      if (chkAll) chkAll.checked = linhas.every(([lid]) => selecionadosColab.has(lid));
+    });
+  });
   tbody.querySelectorAll('[data-toggle-id]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.toggleId;
       const ativo = btn.dataset.ativo === 'true';
       await updateDoc(doc(db, 'colaboradores', id), { ativo: !ativo });
+    });
+  });
+  tbody.querySelectorAll('[data-toggle-va]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.toggleVa;
+      const recebeVA = btn.dataset.va === 'true';
+      await updateDoc(doc(db, 'colaboradores', id), { recebeVA: !recebeVA });
+    });
+  });
+  tbody.querySelectorAll('[data-toggle-vt]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.toggleVt;
+      const recebeVT = btn.dataset.vt === 'true';
+      await updateDoc(doc(db, 'colaboradores', id), { recebeVT: !recebeVT });
     });
   });
   tbody.querySelectorAll('[data-edit-id]').forEach(btn => {
@@ -455,12 +601,34 @@ function renderColaboradoresTable() {
       const nome = colaboradoresMap.get(id)?.nome ?? '';
       if (!confirm(`Excluir ${nome}?`)) return;
       await deleteDoc(doc(db, 'colaboradores', id));
+      selecionadosColab.delete(id);
       if (editandoColaboradorId === id) cancelarEdicaoColaborador();
     });
   });
 }
 
+async function aplicarEmLoteColaborador(campo, valor) {
+  if (selecionadosColab.size === 0) {
+    alert('Marque pelo menos um colaborador na tabela antes de aplicar.');
+    return;
+  }
+  const batch = writeBatch(db);
+  for (const id of selecionadosColab) {
+    batch.update(doc(db, 'colaboradores', id), { [campo]: valor });
+  }
+  await batch.commit();
+}
+
 let editandoColaboradorId = null;
+
+function definirBadgeForm(id, ligado) {
+  const btn = document.getElementById(id);
+  const textoBase = btn.textContent.replace(/^(Recebe|Não recebe) /, '');
+  btn.dataset.value = ligado ? 'true' : 'false';
+  btn.classList.toggle('ativo', ligado);
+  btn.classList.toggle('inativo', !ligado);
+  btn.textContent = (ligado ? 'Recebe ' : 'Não recebe ') + textoBase;
+}
 
 function iniciarEdicaoColaborador(id) {
   const c = colaboradoresMap.get(id);
@@ -469,6 +637,9 @@ function iniciarEdicaoColaborador(id) {
   document.getElementById('input-nome').value = c.nome;
   document.getElementById('input-salario').value = c.salarioBase;
   document.getElementById('input-plano').value = c.valorPlanoSaude || '';
+  definirBadgeForm('toggle-form-va', c.recebeVA !== false);
+  definirBadgeForm('toggle-form-vt', c.recebeVT !== false);
+  document.getElementById('input-rota').value = c.rotaId || '';
   document.getElementById('btn-add-colab').textContent = 'Salvar alterações';
   document.getElementById('btn-cancelar-edicao').style.display = 'inline-block';
   document.getElementById('input-nome').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -479,6 +650,9 @@ function cancelarEdicaoColaborador() {
   document.getElementById('input-nome').value = '';
   document.getElementById('input-salario').value = '';
   document.getElementById('input-plano').value = '';
+  definirBadgeForm('toggle-form-va', true);
+  definirBadgeForm('toggle-form-vt', true);
+  document.getElementById('input-rota').value = '';
   document.getElementById('btn-add-colab').textContent = 'Adicionar colaborador';
   document.getElementById('btn-cancelar-edicao').style.display = 'none';
 }
@@ -487,19 +661,20 @@ async function criarColaborador() {
   const nome = document.getElementById('input-nome').value.trim();
   const salarioBase = Number(document.getElementById('input-salario').value || 0);
   const valorPlanoSaude = Number(document.getElementById('input-plano').value || 0);
+  const recebeVA = document.getElementById('toggle-form-va').dataset.value === 'true';
+  const recebeVT = document.getElementById('toggle-form-vt').dataset.value === 'true';
+  const rotaId = document.getElementById('input-rota').value || null;
   if (!nome || !salarioBase) { alert('Nome e salário base são obrigatórios.'); return; }
 
   if (editandoColaboradorId) {
-    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), { nome, salarioBase, valorPlanoSaude });
+    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), { nome, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId });
     cancelarEdicaoColaborador();
     return;
   }
 
   const id = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  await setDoc(doc(db, 'colaboradores', id), { nome, salarioBase, valorPlanoSaude, ativo: true });
-  document.getElementById('input-nome').value = '';
-  document.getElementById('input-salario').value = '';
-  document.getElementById('input-plano').value = '';
+  await setDoc(doc(db, 'colaboradores', id), { nome, salarioBase, valorPlanoSaude, ativo: true, recebeVA, recebeVT, rotaId });
+  cancelarEdicaoColaborador();
 }
 
 // ── Parâmetros ──────────────────────────────────────────────────
@@ -521,6 +696,62 @@ async function salvarConfig() {
   const tag = document.getElementById('config-saved');
   tag.style.display = 'inline';
   setTimeout(() => tag.style.display = 'none', 2000);
+}
+
+// ── Transporte Intermunicipal ────────────────────────────────────
+function escutarRotas() {
+  onSnapshot(collection(db, 'rotas'), snap => {
+    rotasMap.clear();
+    snap.forEach(d => rotasMap.set(d.id, d.data()));
+    renderRotasTable();
+    renderRotasSelects();
+    renderLancamentoTable();
+  });
+}
+
+function renderRotasTable() {
+  const tbody = document.getElementById('rotas-tbody');
+  const linhas = Array.from(rotasMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
+  if (linhas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">Nenhuma rota cadastrada ainda.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = linhas.map(([id, r]) => `
+    <tr>
+      <td>${r.nome}</td>
+      <td>${formatBRL(r.valorAdicional)}</td>
+      <td style="text-align:right"><button class="btn-link" data-del-rota="${id}">Excluir</button></td>
+    </tr>
+  `).join('');
+  tbody.querySelectorAll('[data-del-rota]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.delRota;
+      if (!confirm(`Excluir a rota "${rotasMap.get(id)?.nome}"? Colaboradores que usam essa rota voltam a usar o V.T. normal.`)) return;
+      await deleteDoc(doc(db, 'rotas', id));
+    });
+  });
+}
+
+function renderRotasSelects() {
+  const linhas = Array.from(rotasMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
+  const options = '<option value="">V.T. normal</option>' +
+    linhas.map(([id, r]) => `<option value="${id}">${r.nome} (+${formatBRL(r.valorAdicional)}/dia)</option>`).join('');
+  for (const selectId of ['input-rota', 'select-bulk-rota']) {
+    const select = document.getElementById(selectId);
+    const valorAtual = select.value;
+    select.innerHTML = options;
+    select.value = valorAtual;
+  }
+}
+
+async function criarRota() {
+  const nome = document.getElementById('input-rota-nome').value.trim();
+  const valorAdicional = Number(document.getElementById('input-rota-valor').value || 0);
+  if (!nome || !valorAdicional) { alert('Nome da rota e valor adicional são obrigatórios.'); return; }
+  const id = 'r_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  await setDoc(doc(db, 'rotas', id), { nome, valorAdicional });
+  document.getElementById('input-rota-nome').value = '';
+  document.getElementById('input-rota-valor').value = '';
 }
 
 // ── Lançamento mensal ───────────────────────────────────────────
@@ -606,11 +837,7 @@ function renderLancamentoTable() {
 
   let totalFlash = 0, totalPlano = 0;
   tbody.innerHTML = linhas.map(({ l, c }) => {
-    const calc = calcMonthlyEntry({
-      diasNoMes: l.diasNoMes, diasNaoUteis: l.diasNaoUteis, diasHomeOffice: l.diasHomeOffice,
-      faltasAtestado: l.faltasAtestado, coParticipacao: l.coParticipacao,
-      valorPlanoSaude: c.valorPlanoSaude, valorDiarioVA: config.valorDiarioVA, valorDiarioVT: config.valorDiarioVT,
-    });
+    const calc = calcularLinhaColaborador(l, c, config, rotasMap);
     totalFlash += calc.totalFlash;
     totalPlano += calc.totalPlano;
     return `
@@ -711,11 +938,7 @@ async function calcularResumoPorMes() {
     const l = d.data();
     const c = colaboradoresMap.get(l.colaboradorId);
     if (!c) return;
-    const calc = calcMonthlyEntry({
-      diasNoMes: l.diasNoMes, diasNaoUteis: l.diasNaoUteis, diasHomeOffice: l.diasHomeOffice,
-      faltasAtestado: l.faltasAtestado, coParticipacao: l.coParticipacao,
-      valorPlanoSaude: c.valorPlanoSaude, valorDiarioVA: config.valorDiarioVA, valorDiarioVT: config.valorDiarioVT,
-    });
+    const calc = calcularLinhaColaborador(l, c, config, rotasMap);
     const atual = porMes.get(l.mesReferencia) || { colaboradores: 0, totalFlash: 0, totalPlano: 0 };
     atual.colaboradores += 1;
     atual.totalFlash += calc.totalFlash;
@@ -811,11 +1034,7 @@ function exportarMesAtual() {
 
   const header = ['COLABORADOR','SAL. BASE','MÊS','NÃO ÚTEIS','HOME','FALTAS / ATESTADO','DIAS ÚTEIS','V.A.','V.T.','FLASH','P. SAÚDE','CO-PART.','TT PLANO'];
   const rows = linhas.map(({ l, c }) => {
-    const calc = calcMonthlyEntry({
-      diasNoMes: l.diasNoMes, diasNaoUteis: l.diasNaoUteis, diasHomeOffice: l.diasHomeOffice,
-      faltasAtestado: l.faltasAtestado, coParticipacao: l.coParticipacao,
-      valorPlanoSaude: c.valorPlanoSaude, valorDiarioVA: config.valorDiarioVA, valorDiarioVT: config.valorDiarioVT,
-    });
+    const calc = calcularLinhaColaborador(l, c, config, rotasMap);
     return [c.nome, c.salarioBase, l.diasNoMes, l.diasNaoUteis, l.diasHomeOffice, l.faltasAtestado,
       calc.diasUteis, calc.valorVA, calc.valorVT, calc.totalFlash, c.valorPlanoSaude, l.coParticipacao, calc.totalPlano];
   });

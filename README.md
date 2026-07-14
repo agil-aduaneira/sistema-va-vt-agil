@@ -1,7 +1,9 @@
-# Sistema de Cálculo V.A. + V.T. — Agil Aduaneira
+# Setor Pessoal — Agil Aduaneira
 
-Substitui a planilha mensal de Vale Alimentação, Vale Transporte e plano de saúde por um sistema
-com cadastro único de colaborador e lançamento mensal recalculado automaticamente.
+Nasceu como substituto da planilha mensal de Vale Alimentação, Vale Transporte e plano de saúde,
+com cadastro único de colaborador e lançamento mensal recalculado automaticamente. Cresceu para
+cobrir também exceções de benefício por colaborador e transporte intermunicipal, a pedido da
+Diretoria — nome do sistema atualizado de "V.A. + V.T." para "Setor Pessoal" para refletir isso.
 
 ## Stack
 
@@ -10,8 +12,9 @@ sistemas internos da Agil (`follow-up-agiladuaneira-importacao`, `estudo-de-viab
 sem build, sem backend próprio, hospedado de graça no GitHub Pages.
 
 - **Firebase Auth (Email/Senha)** — login, `login.html`
-- **Firestore** — coleções `colaboradores`, `config` (doc único `geral`) e `lancamentos`
-  (um documento por colaborador+mês, id `{mesReferencia}_{colaboradorId}`)
+- **Firestore** — coleções `colaboradores` (com `recebeVA`/`recebeVT`/`rotaId` opcionais),
+  `rotas` (transporte intermunicipal: nome + valor adicional/dia), `config` (doc único `geral`)
+  e `lancamentos` (um documento por colaborador+mês, id `{mesReferencia}_{colaboradorId}`)
 - **SheetJS (xlsx)** via CDN — exportação da folha do mês em `.xlsx`, direto no navegador
 
 Projeto Firebase: `sistema-va-vt-agil` (console.firebase.google.com/project/sistema-va-vt-agil).
