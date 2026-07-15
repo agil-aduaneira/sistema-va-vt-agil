@@ -387,6 +387,14 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <label>Retorno em</label>
         <input type="date" id="input-periodo-retorno">
       </div>
+      <div class="field" style="width:100px">
+        <label>Direito (Dias)</label>
+        <input type="number" min="0" step="0.5" class="num-input" id="input-periodo-direito" value="30">
+      </div>
+      <div class="field" style="width:100px">
+        <label>Dias gozados</label>
+        <input type="number" min="0" step="0.5" class="num-input" id="input-periodo-dias-gozados" value="0">
+      </div>
       <div class="field" style="flex:1;min-width:220px">
         <label>Observações</label>
         <input type="text" id="input-periodo-observacoes" placeholder="Ex.: precisa ser oficializada em agosto/2026">
@@ -396,8 +404,8 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
 
     <div class="card" style="padding:0;overflow-x:auto">
       <table>
-        <thead><tr><th>#</th><th>Período Aquisitivo</th><th>Limite até</th><th>Gozada de</th><th>Gozada até</th><th>Retorno</th><th>Observações</th><th>Alerta</th><th></th></tr></thead>
-        <tbody id="ferias-tbody"><tr><td colspan="9" class="empty-msg">Selecione um colaborador acima.</td></tr></tbody>
+        <thead><tr><th>#</th><th>Período Aquisitivo</th><th>Limite até</th><th>Gozada de</th><th>Gozada até</th><th>Retorno</th><th>Direito (Dias)</th><th>Dias Gozados</th><th>Restam (Dias)</th><th>Observações</th><th>Alerta</th><th></th></tr></thead>
+        <tbody id="ferias-tbody"><tr><td colspan="12" class="empty-msg">Selecione um colaborador acima.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -1532,33 +1540,46 @@ function calcularAlertaFerias(p) {
 function renderFeriasTable() {
   const tbody = document.getElementById('ferias-tbody');
   if (!feriasColaboradorId) {
-    tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">Selecione um colaborador acima.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="empty-msg">Selecione um colaborador acima.</td></tr>';
     return;
   }
   const periodos = (todasFeriasMap.get(feriasColaboradorId) || []).slice()
     .sort((a, b) => (a.limite || '').localeCompare(b.limite || ''));
   if (periodos.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">Nenhum período cadastrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="empty-msg">Nenhum período cadastrado ainda.</td></tr>';
     return;
   }
   const admissao = colaboradoresMap.get(feriasColaboradorId)?.dataAdmissao;
   tbody.innerHTML = periodos.map((p, i) => {
     const alerta = calcularAlertaFerias(p);
     const aquisitivo = admissao ? calcularPeriodoAquisitivoFerias(admissao, i + 1) : null;
+    const direito = p.direito ?? 30;
+    const diasGozados = p.diasGozados ?? 0;
+    const restam = Math.max(0, direito - diasGozados);
     return `
-      <tr>
+      <tr data-periodo-ferias-id="${p.id}">
         <td>${i + 1}ª</td>
         <td>${aquisitivo ? `${formatarDataBR(aquisitivo.inicio)} a ${formatarDataBR(aquisitivo.fim)}` : '—'}</td>
         <td>${p.limite ? formatarDataBR(p.limite) : '—'}</td>
         <td>${p.gozadaInicio ? formatarDataBR(p.gozadaInicio) : '—'}</td>
         <td>${p.gozadaFim ? formatarDataBR(p.gozadaFim) : '—'}</td>
         <td>${p.retorno ? formatarDataBR(p.retorno) : '—'}</td>
+        <td><input type="number" min="0" step="0.5" class="num-input co-input" data-campo-ferias="direito" value="${direito}"></td>
+        <td><input type="number" min="0" step="0.5" class="num-input co-input" data-campo-ferias="diasGozados" value="${diasGozados}"></td>
+        <td>${restam}</td>
         <td>${p.observacoes || '—'}</td>
         <td><span class="badge ${alerta.classe}">${alerta.texto}</span></td>
         <td style="text-align:right"><button class="btn-link" data-del-periodo="${p.id}">Excluir</button></td>
       </tr>
     `;
   }).join('');
+  tbody.querySelectorAll('[data-campo-ferias]').forEach(input => {
+    input.addEventListener('change', async () => {
+      const periodoId = input.closest('tr').dataset.periodoFeriasId;
+      const valor = Number(input.value || 0);
+      await updateDoc(doc(db, 'ferias', periodoId), { [input.dataset.campoFerias]: valor });
+    });
+  });
   tbody.querySelectorAll('[data-del-periodo]').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('Excluir este período de férias?')) return;
@@ -1591,13 +1612,17 @@ async function criarPeriodoFerias() {
   const gozadaInicio = document.getElementById('input-periodo-gozada-inicio').value || null;
   const gozadaFim = document.getElementById('input-periodo-gozada-fim').value || null;
   const retorno = document.getElementById('input-periodo-retorno').value || null;
+  const direito = Number(document.getElementById('input-periodo-direito').value || 30);
+  const diasGozados = Number(document.getElementById('input-periodo-dias-gozados').value || 0);
   const observacoes = document.getElementById('input-periodo-observacoes').value.trim() || null;
   if (!limite) { alert('Informe ao menos a data limite.'); return; }
 
-  await setDoc(doc(collection(db, 'ferias')), { colaboradorId: feriasColaboradorId, limite, gozadaInicio, gozadaFim, retorno, observacoes });
+  await setDoc(doc(collection(db, 'ferias')), { colaboradorId: feriasColaboradorId, limite, gozadaInicio, gozadaFim, retorno, direito, diasGozados, observacoes });
   document.getElementById('input-periodo-gozada-inicio').value = '';
   document.getElementById('input-periodo-gozada-fim').value = '';
   document.getElementById('input-periodo-retorno').value = '';
+  document.getElementById('input-periodo-direito').value = '30';
+  document.getElementById('input-periodo-dias-gozados').value = '0';
   document.getElementById('input-periodo-observacoes').value = '';
   sugerirProximoLimiteFerias();
 }
