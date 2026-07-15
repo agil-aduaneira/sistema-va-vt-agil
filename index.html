@@ -372,7 +372,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
 
     <div class="card form-row">
       <div class="field">
-        <label>Limite até</label>
+        <label>Limite até (automático)</label>
         <input type="date" id="input-periodo-limite">
       </div>
       <div class="field">
@@ -396,8 +396,8 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
 
     <div class="card" style="padding:0;overflow-x:auto">
       <table>
-        <thead><tr><th>#</th><th>Limite até</th><th>Gozada de</th><th>Gozada até</th><th>Retorno</th><th>Observações</th><th>Alerta</th><th></th></tr></thead>
-        <tbody id="ferias-tbody"><tr><td colspan="8" class="empty-msg">Selecione um colaborador acima.</td></tr></tbody>
+        <thead><tr><th>#</th><th>Período Aquisitivo</th><th>Limite até</th><th>Gozada de</th><th>Gozada até</th><th>Retorno</th><th>Observações</th><th>Alerta</th><th></th></tr></thead>
+        <tbody id="ferias-tbody"><tr><td colspan="9" class="empty-msg">Selecione um colaborador acima.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -742,6 +742,7 @@ function iniciarApp() {
     const c = colaboradoresMap.get(feriasColaboradorId);
     document.getElementById('input-ferias-admissao').value = c?.dataAdmissao || '';
     renderFeriasTable();
+    sugerirProximoLimiteFerias();
   });
   document.getElementById('btn-salvar-admissao').addEventListener('click', salvarAdmissao);
   document.getElementById('btn-add-periodo').addEventListener('click', criarPeriodoFerias);
@@ -1339,6 +1340,40 @@ function formatarDataBR(dataISO) {
   return `${dia}/${mes}/${ano}`;
 }
 
+// Soma meses a uma data ISO (YYYY-MM-DD), preservando o dia ou usando o
+// último dia do mês de destino quando o dia original não existir nele
+// (ex.: 31/05 + 23 meses = 30/04, já que abril não tem dia 31).
+function addMonthsISO(dataISO, meses) {
+  const [ano, mes, dia] = dataISO.split('-').map(Number);
+  const totalMeses = (mes - 1) + meses;
+  const anoDestino = ano + Math.floor(totalMeses / 12);
+  const mesDestino = ((totalMeses % 12) + 12) % 12; // 0-based, sempre positivo
+  const ultimoDiaDoMes = new Date(anoDestino, mesDestino + 1, 0).getDate();
+  const diaDestino = Math.min(dia, ultimoDiaDoMes);
+  return `${anoDestino}-${String(mesDestino + 1).padStart(2, '0')}-${String(diaDestino).padStart(2, '0')}`;
+}
+
+function addDaysISO(dataISO, dias) {
+  const d = new Date(dataISO + 'T00:00:00');
+  d.setDate(d.getDate() + dias);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Data limite para conceder a N-ésima férias (N=1,2,3...), contada a partir da
+// admissão: 1ª férias = admissão + 23 meses (período aquisitivo de 12 meses +
+// período concessivo de 11 meses, 1 mês de margem antes do limite legal de 24
+// meses da CLT); a partir da 2ª, soma-se 1 ano a cada período seguinte.
+function calcularLimiteFerias(dataAdmissaoISO, numeroPeriodo) {
+  return addMonthsISO(dataAdmissaoISO, 23 + (numeroPeriodo - 1) * 12);
+}
+
+// Período aquisitivo (início/fim) da N-ésima férias, contado a partir da admissão.
+function calcularPeriodoAquisitivoFerias(dataAdmissaoISO, numeroPeriodo) {
+  const inicio = addMonthsISO(dataAdmissaoISO, (numeroPeriodo - 1) * 12);
+  const fim = addDaysISO(addMonthsISO(dataAdmissaoISO, numeroPeriodo * 12), -1);
+  return { inicio, fim };
+}
+
 // ── 13º Salário ───────────────────────────────────────────────────
 let anoAtual = new Date().getFullYear();
 let decimosDoAno = new Map(); // employeeId -> {id, ...campos}
@@ -1469,6 +1504,7 @@ function escutarTodasFerias() {
     renderLancamentoTable();
     renderFeriasTable();
     renderColaboradoresTable();
+    sugerirProximoLimiteFerias();
   });
 }
 
@@ -1496,20 +1532,23 @@ function calcularAlertaFerias(p) {
 function renderFeriasTable() {
   const tbody = document.getElementById('ferias-tbody');
   if (!feriasColaboradorId) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">Selecione um colaborador acima.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">Selecione um colaborador acima.</td></tr>';
     return;
   }
   const periodos = (todasFeriasMap.get(feriasColaboradorId) || []).slice()
     .sort((a, b) => (a.limite || '').localeCompare(b.limite || ''));
   if (periodos.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-msg">Nenhum período cadastrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">Nenhum período cadastrado ainda.</td></tr>';
     return;
   }
+  const admissao = colaboradoresMap.get(feriasColaboradorId)?.dataAdmissao;
   tbody.innerHTML = periodos.map((p, i) => {
     const alerta = calcularAlertaFerias(p);
+    const aquisitivo = admissao ? calcularPeriodoAquisitivoFerias(admissao, i + 1) : null;
     return `
       <tr>
         <td>${i + 1}ª</td>
+        <td>${aquisitivo ? `${formatarDataBR(aquisitivo.inicio)} a ${formatarDataBR(aquisitivo.fim)}` : '—'}</td>
         <td>${p.limite ? formatarDataBR(p.limite) : '—'}</td>
         <td>${p.gozadaInicio ? formatarDataBR(p.gozadaInicio) : '—'}</td>
         <td>${p.gozadaFim ? formatarDataBR(p.gozadaFim) : '—'}</td>
@@ -1528,10 +1567,21 @@ function renderFeriasTable() {
   });
 }
 
+// Preenche "Limite até" com a data automática (admissão + 23 meses para a 1ª
+// férias, +1 ano a cada período seguinte). Continua editável para exceções.
+function sugerirProximoLimiteFerias() {
+  const admissao = colaboradoresMap.get(feriasColaboradorId)?.dataAdmissao;
+  const input = document.getElementById('input-periodo-limite');
+  if (!admissao) { input.value = ''; return; }
+  const numeroProximoPeriodo = (todasFeriasMap.get(feriasColaboradorId) || []).length + 1;
+  input.value = calcularLimiteFerias(admissao, numeroProximoPeriodo);
+}
+
 async function salvarAdmissao() {
   if (!feriasColaboradorId) { alert('Selecione um colaborador primeiro.'); return; }
   const dataAdmissao = document.getElementById('input-ferias-admissao').value || null;
   await updateDoc(doc(db, 'colaboradores', feriasColaboradorId), { dataAdmissao });
+  sugerirProximoLimiteFerias();
   alert('Data de admissão salva.');
 }
 
@@ -1545,11 +1595,11 @@ async function criarPeriodoFerias() {
   if (!limite) { alert('Informe ao menos a data limite.'); return; }
 
   await setDoc(doc(collection(db, 'ferias')), { colaboradorId: feriasColaboradorId, limite, gozadaInicio, gozadaFim, retorno, observacoes });
-  document.getElementById('input-periodo-limite').value = '';
   document.getElementById('input-periodo-gozada-inicio').value = '';
   document.getElementById('input-periodo-gozada-fim').value = '';
   document.getElementById('input-periodo-retorno').value = '';
   document.getElementById('input-periodo-observacoes').value = '';
+  sugerirProximoLimiteFerias();
 }
 
 function estaDeFeriasNoMes(colaboradorId, mesReferencia) {
