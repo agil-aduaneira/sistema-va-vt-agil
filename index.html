@@ -482,6 +482,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
           <option value="Falta">Falta</option>
           <option value="Atestado">Atestado</option>
           <option value="Ocorrência">Ocorrência</option>
+          <option value="Feedback">Feedback</option>
           <option value="Qualidade">Qualidade</option>
           <option value="Vulnerabilidade">Vulnerabilidade</option>
           <option value="Outro">Outro</option>
@@ -500,7 +501,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <input type="text" id="input-dossie-para">
       </div>
       <div class="field" id="campo-dossie-anexo" style="display:none">
-        <label>Anexar atestado</label>
+        <label>Anexar arquivo</label>
         <input type="file" id="input-dossie-anexo" accept=".pdf,.jpg,.jpeg,.png">
       </div>
       <button class="btn btn-primary" id="btn-add-dossie">Adicionar registro</button>
@@ -751,7 +752,7 @@ function iniciarApp() {
   document.getElementById('input-dossie-tipo').addEventListener('change', (e) => {
     const tipo = e.target.value;
     const ehMudanca = tipo === 'Mudança de cargo' || tipo === 'Mudança de salário';
-    document.getElementById('campo-dossie-anexo').style.display = tipo === 'Atestado' ? 'flex' : 'none';
+    document.getElementById('campo-dossie-anexo').style.display = (tipo === 'Atestado' || tipo === 'Feedback') ? 'flex' : 'none';
     document.getElementById('campo-dossie-descricao').style.display = ehMudanca ? 'none' : 'flex';
     document.getElementById('campo-dossie-de').style.display = ehMudanca ? 'flex' : 'none';
     document.getElementById('campo-dossie-para').style.display = ehMudanca ? 'flex' : 'none';
@@ -1650,7 +1651,7 @@ async function criarRegistroDossie() {
 
   try {
     let anexoUrl = null;
-    if (tipo === 'Atestado' && arquivo) {
+    if ((tipo === 'Atestado' || tipo === 'Feedback') && arquivo) {
       const caminho = `dossie/${colaboradorId}/${Date.now()}_${arquivo.name}`;
       const storageRef = ref(storage, caminho);
       await uploadBytes(storageRef, arquivo);
