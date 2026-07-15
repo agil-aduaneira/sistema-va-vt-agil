@@ -165,6 +165,11 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       </div>
     </div>
 
+    <div class="card">
+      <div class="stat-label">Aniversariantes do mês</div>
+      <div id="lista-aniversariantes" style="margin-top:8px">—</div>
+    </div>
+
     <div class="chart-wrap">
       <canvas id="chart-evolucao"></canvas>
     </div>
@@ -265,6 +270,10 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <label>Periodicidade (meses)</label>
         <input type="number" min="1" id="input-aso-periodicidade" value="12">
       </div>
+      <div class="field">
+        <label>Data de nascimento</label>
+        <input type="date" id="input-nascimento">
+      </div>
       <button class="btn btn-primary" id="btn-add-colab">Adicionar colaborador</button>
       <button class="btn btn-ghost" id="btn-cancelar-edicao" style="display:none">Cancelar</button>
     </div>
@@ -293,7 +302,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
           <tr>
             <th><input type="checkbox" id="chk-select-all-colab" title="Selecionar todos"></th>
             <th>Nome</th><th>Salário base</th><th>Plano de saúde</th><th>Status</th>
-            <th>V.A.</th><th>V.T.</th><th>ASO</th><th></th>
+            <th>V.A.</th><th>V.T.</th><th>ASO</th><th>Nascimento</th><th></th>
           </tr>
         </thead>
         <tbody id="colaboradores-tbody"></tbody>
@@ -315,6 +324,10 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <div class="field">
           <label>Valor diário V.T. (R$)</label>
           <input type="number" step="0.01" id="input-vt">
+        </div>
+        <div class="field">
+          <label>Alertar férias a vencer com quantos dias de antecedência</label>
+          <input type="number" step="1" min="1" id="input-dias-alerta-ferias">
         </div>
         <button class="btn btn-primary" id="btn-salvar-config">Salvar</button>
         <span id="config-saved" style="display:none;color:var(--green);font-size:13px">Salvo!</span>
@@ -638,7 +651,7 @@ function mesAtualStr() {
 let colaboradoresMap = new Map(); // id -> {nome, salarioBase, valorPlanoSaude, ativo, recebeVA, recebeVT, rotaId}
 let rotasMap = new Map(); // id -> {nome, valorAdicional}
 let selecionadosColab = new Set();
-let config = { valorDiarioVA: 0, valorDiarioVT: 0 };
+let config = { valorDiarioVA: 0, valorDiarioVT: 0, diasAlertaFerias: 360 };
 let mesAtual = mesAtualStr();
 let unsubLancamentos = null;
 
@@ -821,7 +834,7 @@ function renderColaboradoresTable() {
   const tbody = document.getElementById('colaboradores-tbody');
   const linhas = Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
   if (linhas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">Nenhum colaborador cadastrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="empty-msg">Nenhum colaborador cadastrado ainda.</td></tr>';
     return;
   }
   tbody.innerHTML = linhas.map(([id, c]) => {
@@ -842,6 +855,7 @@ function renderColaboradoresTable() {
       <td><button class="badge ${recebeVA ? 'ativo' : 'inativo'}" data-toggle-va="${id}" data-va="${recebeVA}">${recebeVA ? 'Recebe' : 'Não recebe'}</button></td>
       <td><button class="badge ${recebeVT ? 'ativo' : 'inativo'}" data-toggle-vt="${id}" data-vt="${recebeVT}">${recebeVT ? 'Recebe' : 'Não recebe'}</button></td>
       <td><span class="badge ${aso.classe}" title="${c.asoData ? 'Último ASO: ' + c.asoData : 'ASO nunca cadastrado'}">${aso.texto}</span></td>
+      <td>${c.dataNascimento ? formatarDataBR(c.dataNascimento) : '—'}</td>
       <td style="text-align:right">
         <button class="btn-link" style="color:var(--blue)" data-edit-id="${id}">Editar</button>
         <button class="btn-link" data-del-id="${id}">Excluir</button>
@@ -930,6 +944,7 @@ function iniciarEdicaoColaborador(id) {
   document.getElementById('input-rota').value = c.rotaId || '';
   document.getElementById('input-aso-data').value = c.asoData || '';
   document.getElementById('input-aso-periodicidade').value = c.asoPeriodicidade || 12;
+  document.getElementById('input-nascimento').value = c.dataNascimento || '';
   document.getElementById('btn-add-colab').textContent = 'Salvar alterações';
   document.getElementById('btn-cancelar-edicao').style.display = 'inline-block';
   document.getElementById('input-nome').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -945,6 +960,7 @@ function cancelarEdicaoColaborador() {
   document.getElementById('input-rota').value = '';
   document.getElementById('input-aso-data').value = '';
   document.getElementById('input-aso-periodicidade').value = 12;
+  document.getElementById('input-nascimento').value = '';
   document.getElementById('btn-add-colab').textContent = 'Adicionar colaborador';
   document.getElementById('btn-cancelar-edicao').style.display = 'none';
 }
@@ -958,16 +974,17 @@ async function criarColaborador() {
   const rotaId = document.getElementById('input-rota').value || null;
   const asoData = document.getElementById('input-aso-data').value || null;
   const asoPeriodicidade = Number(document.getElementById('input-aso-periodicidade').value || 12);
+  const dataNascimento = document.getElementById('input-nascimento').value || null;
   if (!nome || !salarioBase) { alert('Nome e salário base são obrigatórios.'); return; }
 
   if (editandoColaboradorId) {
-    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), { nome, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId, asoData, asoPeriodicidade });
+    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), { nome, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId, asoData, asoPeriodicidade, dataNascimento });
     cancelarEdicaoColaborador();
     return;
   }
 
   const id = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  await setDoc(doc(db, 'colaboradores', id), { nome, salarioBase, valorPlanoSaude, ativo: true, recebeVA, recebeVT, rotaId, asoData, asoPeriodicidade });
+  await setDoc(doc(db, 'colaboradores', id), { nome, salarioBase, valorPlanoSaude, ativo: true, recebeVA, recebeVT, rotaId, asoData, asoPeriodicidade, dataNascimento });
   cancelarEdicaoColaborador();
 }
 
@@ -975,10 +992,13 @@ async function criarColaborador() {
 function escutarConfig() {
   onSnapshot(doc(db, 'config', 'geral'), snap => {
     if (snap.exists()) {
-      config = snap.data();
+      config = { diasAlertaFerias: 360, ...snap.data() };
       document.getElementById('input-va').value = config.valorDiarioVA;
       document.getElementById('input-vt').value = config.valorDiarioVT;
+      document.getElementById('input-dias-alerta-ferias').value = config.diasAlertaFerias;
       renderLancamentoTable();
+      renderFeriasTable();
+      atualizarStatsDashboard();
     }
   });
 }
@@ -986,7 +1006,8 @@ function escutarConfig() {
 async function salvarConfig() {
   const valorDiarioVA = Number(document.getElementById('input-va').value || 0);
   const valorDiarioVT = Number(document.getElementById('input-vt').value || 0);
-  await setDoc(doc(db, 'config', 'geral'), { valorDiarioVA, valorDiarioVT });
+  const diasAlertaFerias = Number(document.getElementById('input-dias-alerta-ferias').value || 360);
+  await setDoc(doc(db, 'config', 'geral'), { valorDiarioVA, valorDiarioVT, diasAlertaFerias });
   const tag = document.getElementById('config-saved');
   tag.style.display = 'inline';
   setTimeout(() => tag.style.display = 'none', 2000);
@@ -1307,6 +1328,19 @@ function atualizarStatsDashboard() {
       }).length;
     statFerias.textContent = aVencer;
   }
+
+  const listaAniversariantes = document.getElementById('lista-aniversariantes');
+  if (listaAniversariantes) {
+    const mesAtualReal = new Date().getMonth() + 1;
+    const aniversariantes = Array.from(colaboradoresMap.values())
+      .filter(c => c.ativo && c.dataNascimento)
+      .map(c => ({ nome: c.nome, dia: Number(c.dataNascimento.split('-')[2]), mes: Number(c.dataNascimento.split('-')[1]) }))
+      .filter(c => c.mes === mesAtualReal)
+      .sort((a, b) => a.dia - b.dia);
+    listaAniversariantes.innerHTML = aniversariantes.length === 0
+      ? 'Nenhum aniversariante este mês.'
+      : aniversariantes.map(a => `${String(a.dia).padStart(2, '0')} — ${a.nome}`).join('<br>');
+  }
 }
 
 // Próxima data limite de férias de um colaborador: usa o período já cadastrado
@@ -1567,7 +1601,7 @@ function calcularAlertaFerias(p) {
   hoje.setHours(0, 0, 0, 0);
   const dias = Math.round((limite - hoje) / 86400000);
   if (dias < 0) return { texto: 'Vencido', classe: 'vencido' };
-  if (dias <= 360) return { texto: `Atenção (${dias}d)`, classe: 'a-vencer' };
+  if (dias <= (config.diasAlertaFerias ?? 360)) return { texto: `Atenção (${dias}d)`, classe: 'a-vencer' };
   return { texto: 'OK', classe: 'ativo' };
 }
 
