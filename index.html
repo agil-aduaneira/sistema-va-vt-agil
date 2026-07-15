@@ -400,6 +400,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <input type="text" id="input-periodo-observacoes" placeholder="Ex.: precisa ser oficializada em agosto/2026">
       </div>
       <button class="btn btn-primary" id="btn-add-periodo">Adicionar período</button>
+      <button class="btn btn-ghost" id="btn-cancelar-edicao-periodo" style="display:none">Cancelar</button>
     </div>
 
     <div class="card" style="padding:0;overflow-x:auto">
@@ -746,6 +747,7 @@ function iniciarApp() {
   });
 
   document.getElementById('select-ferias-colaborador').addEventListener('change', (e) => {
+    cancelarEdicaoPeriodoFerias();
     feriasColaboradorId = e.target.value;
     const c = colaboradoresMap.get(feriasColaboradorId);
     document.getElementById('input-ferias-admissao').value = c?.dataAdmissao || '';
@@ -754,6 +756,7 @@ function iniciarApp() {
   });
   document.getElementById('btn-salvar-admissao').addEventListener('click', salvarAdmissao);
   document.getElementById('btn-add-periodo').addEventListener('click', criarPeriodoFerias);
+  document.getElementById('btn-cancelar-edicao-periodo').addEventListener('click', cancelarEdicaoPeriodoFerias);
 
   document.getElementById('select-dossie-colaborador').addEventListener('change', (e) => {
     escutarDossie(e.target.value);
@@ -1569,7 +1572,7 @@ function renderFeriasTable() {
         <td>${restam}</td>
         <td>${p.observacoes || '—'}</td>
         <td><span class="badge ${alerta.classe}">${alerta.texto}</span></td>
-        <td style="text-align:right"><button class="btn-link" data-del-periodo="${p.id}">Excluir</button></td>
+        <td style="text-align:right"><button class="btn-link" data-editar-periodo="${p.id}">Editar</button> <button class="btn-link" data-del-periodo="${p.id}">Excluir</button></td>
       </tr>
     `;
   }).join('');
@@ -1580,10 +1583,15 @@ function renderFeriasTable() {
       await updateDoc(doc(db, 'ferias', periodoId), { [input.dataset.campoFerias]: valor });
     });
   });
+  tbody.querySelectorAll('[data-editar-periodo]').forEach(btn => {
+    btn.addEventListener('click', () => iniciarEdicaoPeriodoFerias(btn.dataset.editarPeriodo));
+  });
   tbody.querySelectorAll('[data-del-periodo]').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('Excluir este período de férias?')) return;
-      await deleteDoc(doc(db, 'ferias', btn.dataset.delPeriodo));
+      const periodoId = btn.dataset.delPeriodo;
+      await deleteDoc(doc(db, 'ferias', periodoId));
+      if (editandoPeriodoFeriasId === periodoId) cancelarEdicaoPeriodoFerias();
     });
   });
 }
@@ -1606,6 +1614,37 @@ async function salvarAdmissao() {
   alert('Data de admissão salva.');
 }
 
+let editandoPeriodoFeriasId = null;
+
+function iniciarEdicaoPeriodoFerias(periodoId) {
+  const p = (todasFeriasMap.get(feriasColaboradorId) || []).find(x => x.id === periodoId);
+  if (!p) return;
+  editandoPeriodoFeriasId = periodoId;
+  document.getElementById('input-periodo-limite').value = p.limite || '';
+  document.getElementById('input-periodo-gozada-inicio').value = p.gozadaInicio || '';
+  document.getElementById('input-periodo-gozada-fim').value = p.gozadaFim || '';
+  document.getElementById('input-periodo-retorno').value = p.retorno || '';
+  document.getElementById('input-periodo-direito').value = p.direito ?? 30;
+  document.getElementById('input-periodo-dias-gozados').value = p.diasGozados ?? 0;
+  document.getElementById('input-periodo-observacoes').value = p.observacoes || '';
+  document.getElementById('btn-add-periodo').textContent = 'Salvar alterações';
+  document.getElementById('btn-cancelar-edicao-periodo').style.display = 'inline-block';
+  document.getElementById('input-periodo-limite').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function cancelarEdicaoPeriodoFerias() {
+  editandoPeriodoFeriasId = null;
+  document.getElementById('input-periodo-gozada-inicio').value = '';
+  document.getElementById('input-periodo-gozada-fim').value = '';
+  document.getElementById('input-periodo-retorno').value = '';
+  document.getElementById('input-periodo-direito').value = '30';
+  document.getElementById('input-periodo-dias-gozados').value = '0';
+  document.getElementById('input-periodo-observacoes').value = '';
+  document.getElementById('btn-add-periodo').textContent = 'Adicionar período';
+  document.getElementById('btn-cancelar-edicao-periodo').style.display = 'none';
+  sugerirProximoLimiteFerias();
+}
+
 async function criarPeriodoFerias() {
   if (!feriasColaboradorId) { alert('Selecione um colaborador primeiro.'); return; }
   const limite = document.getElementById('input-periodo-limite').value || null;
@@ -1616,6 +1655,12 @@ async function criarPeriodoFerias() {
   const diasGozados = Number(document.getElementById('input-periodo-dias-gozados').value || 0);
   const observacoes = document.getElementById('input-periodo-observacoes').value.trim() || null;
   if (!limite) { alert('Informe ao menos a data limite.'); return; }
+
+  if (editandoPeriodoFeriasId) {
+    await updateDoc(doc(db, 'ferias', editandoPeriodoFeriasId), { limite, gozadaInicio, gozadaFim, retorno, direito, diasGozados, observacoes });
+    cancelarEdicaoPeriodoFerias();
+    return;
+  }
 
   await setDoc(doc(collection(db, 'ferias')), { colaboradorId: feriasColaboradorId, limite, gozadaInicio, gozadaFim, retorno, direito, diasGozados, observacoes });
   document.getElementById('input-periodo-gozada-inicio').value = '';
