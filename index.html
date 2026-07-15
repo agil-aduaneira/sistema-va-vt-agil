@@ -159,6 +159,10 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <div class="stat-label">ASOs pendentes</div>
         <div class="stat-value" id="stat-aso-pendentes">—</div>
       </div>
+      <div class="stat-card">
+        <div class="stat-label">Férias a vencer</div>
+        <div class="stat-value" id="stat-ferias-a-vencer">—</div>
+      </div>
     </div>
 
     <div class="chart-wrap">
@@ -1290,6 +1294,32 @@ function atualizarStatsDashboard() {
       .filter(c => ['sem-data', 'vencido', 'a-vencer'].includes(calcularStatusASO(c).status)).length;
     statAso.textContent = pendentes;
   }
+
+  const statFerias = document.getElementById('stat-ferias-a-vencer');
+  if (statFerias) {
+    const aVencer = Array.from(colaboradoresMap.entries())
+      .filter(([, c]) => c.ativo)
+      .filter(([id, c]) => {
+        const limite = proximoLimiteFeriasColaborador(id, c);
+        if (!limite) return false;
+        const alerta = calcularAlertaFerias({ limite, gozadaInicio: null });
+        return alerta.classe === 'vencido' || alerta.classe === 'a-vencer';
+      }).length;
+    statFerias.textContent = aVencer;
+  }
+}
+
+// Próxima data limite de férias de um colaborador: usa o período já cadastrado
+// e ainda não gozado com o limite mais próximo; se não houver nenhum (ou todos
+// já gozados), calcula automaticamente o próximo (mesma regra do formulário).
+function proximoLimiteFeriasColaborador(colaboradorId, colaborador) {
+  if (!colaborador?.dataAdmissao) return null;
+  const periodos = todasFeriasMap.get(colaboradorId) || [];
+  const pendente = periodos
+    .filter(p => !p.gozadaInicio)
+    .sort((a, b) => (a.limite || '').localeCompare(b.limite || ''))[0];
+  if (pendente) return pendente.limite;
+  return calcularLimiteFerias(colaborador.dataAdmissao, periodos.length + 1);
 }
 
 async function carregarDashboard() {
@@ -1516,6 +1546,7 @@ function escutarTodasFerias() {
     renderFeriasTable();
     renderColaboradoresTable();
     sugerirProximoLimiteFerias();
+    atualizarStatsDashboard();
   });
 }
 
@@ -1572,7 +1603,7 @@ function renderFeriasTable() {
         <td>${restam}</td>
         <td>${p.observacoes || '—'}</td>
         <td><span class="badge ${alerta.classe}">${alerta.texto}</span></td>
-        <td style="text-align:right"><button class="btn-link" data-editar-periodo="${p.id}">Editar</button> <button class="btn-link" data-del-periodo="${p.id}">Excluir</button></td>
+        <td style="text-align:right"><button class="btn-link" style="color:var(--blue)" data-editar-periodo="${p.id}">Editar</button> <button class="btn-link" data-del-periodo="${p.id}">Excluir</button></td>
       </tr>
     `;
   }).join('');
