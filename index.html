@@ -278,11 +278,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       </div>
       <div class="field">
         <label>Data do último ASO</label>
-        <input type="date" id="input-aso-data">
-      </div>
-      <div class="field" style="width:120px">
-        <label>Periodicidade (meses)</label>
-        <input type="number" min="1" id="input-aso-periodicidade" value="12">
+        <input type="date" id="input-aso-data" title="Ao cadastrar um novo colaborador, se ficar vazio o sistema usa a data de admissão (ASO admissional) como base.">
       </div>
       <div class="field">
         <label>Data de nascimento</label>
@@ -349,6 +345,10 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <div class="field">
           <label>Alertar férias a vencer com quantos dias de antecedência</label>
           <input type="number" step="1" min="1" id="input-dias-alerta-ferias">
+        </div>
+        <div class="field">
+          <label>Periodicidade padrão do ASO (meses)</label>
+          <input type="number" min="1" id="input-aso-periodicidade-padrao" value="12">
         </div>
         <button class="btn btn-primary" id="btn-salvar-config">Salvar</button>
         <span id="config-saved" style="display:none;color:var(--green);font-size:13px">Salvo!</span>
@@ -686,7 +686,7 @@ function mesAtualStr() {
 let colaboradoresMap = new Map(); // id -> {nome, salarioBase, valorPlanoSaude, ativo, recebeVA, recebeVT, rotaId}
 let rotasMap = new Map(); // id -> {nome, valorAdicional}
 let selecionadosColab = new Set();
-let config = { valorDiarioVA: 0, valorDiarioVT: 0, diasAlertaFerias: 360 };
+let config = { valorDiarioVA: 0, valorDiarioVT: 0, diasAlertaFerias: 360, asoPeriodicidadePadrao: 12 };
 let mesAtual = mesAtualStr();
 let unsubLancamentos = null;
 
@@ -859,7 +859,7 @@ function escutarColaboradores() {
 // do limite) ou 'em-dia'.
 function calcularStatusASO(c) {
   if (!c.asoData) return { status: 'sem-data', texto: 'Não informado', classe: 'inativo' };
-  const periodicidade = Number(c.asoPeriodicidade) || 12;
+  const periodicidade = config.asoPeriodicidadePadrao ?? 12;
   const ultima = new Date(c.asoData + 'T00:00:00');
   const proxima = new Date(ultima);
   proxima.setMonth(proxima.getMonth() + periodicidade);
@@ -1022,7 +1022,6 @@ function iniciarEdicaoColaborador(id) {
   definirBadgeForm('toggle-form-vt', c.recebeVT !== false);
   document.getElementById('input-rota').value = c.rotaId || '';
   document.getElementById('input-aso-data').value = c.asoData || '';
-  document.getElementById('input-aso-periodicidade').value = c.asoPeriodicidade || 12;
   document.getElementById('input-nascimento').value = c.dataNascimento || '';
   document.getElementById('btn-add-colab').textContent = 'Salvar alterações';
   document.getElementById('btn-cancelar-edicao').style.display = 'inline-block';
@@ -1046,7 +1045,6 @@ function cancelarEdicaoColaborador() {
   definirBadgeForm('toggle-form-vt', true);
   document.getElementById('input-rota').value = '';
   document.getElementById('input-aso-data').value = '';
-  document.getElementById('input-aso-periodicidade').value = 12;
   document.getElementById('input-nascimento').value = '';
   document.getElementById('btn-add-colab').textContent = 'Adicionar colaborador';
   document.getElementById('btn-cancelar-edicao').style.display = 'none';
@@ -1064,19 +1062,23 @@ async function criarColaborador() {
   const recebeVA = document.getElementById('toggle-form-va').dataset.value === 'true';
   const recebeVT = document.getElementById('toggle-form-vt').dataset.value === 'true';
   const rotaId = document.getElementById('input-rota').value || null;
-  const asoData = document.getElementById('input-aso-data').value || null;
-  const asoPeriodicidade = Number(document.getElementById('input-aso-periodicidade').value || 12);
+  let asoData = document.getElementById('input-aso-data').value || null;
   const dataNascimento = document.getElementById('input-nascimento').value || null;
   if (!nome || !salarioBase) { alert('Nome e salário base são obrigatórios.'); return; }
 
   if (editandoColaboradorId) {
-    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), { nome, areaAtuacao, dataAdmissao, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId, asoData, asoPeriodicidade, dataNascimento });
+    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), { nome, areaAtuacao, dataAdmissao, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId, asoData, dataNascimento });
     cancelarEdicaoColaborador();
     return;
   }
 
+  // Só em cadastro novo: se não informar a data do ASO, assume a data de
+  // admissão como base (ASO admissional) — não se aplica a colaboradores já
+  // existentes, que o Setor Pessoal está preenchendo aos poucos.
+  if (!asoData && dataAdmissao) asoData = dataAdmissao;
+
   const id = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  await setDoc(doc(db, 'colaboradores', id), { nome, areaAtuacao, dataAdmissao, salarioBase, valorPlanoSaude, ativo: true, recebeVA, recebeVT, rotaId, asoData, asoPeriodicidade, dataNascimento });
+  await setDoc(doc(db, 'colaboradores', id), { nome, areaAtuacao, dataAdmissao, salarioBase, valorPlanoSaude, ativo: true, recebeVA, recebeVT, rotaId, asoData, dataNascimento });
   cancelarEdicaoColaborador();
 }
 
@@ -1084,12 +1086,14 @@ async function criarColaborador() {
 function escutarConfig() {
   onSnapshot(doc(db, 'config', 'geral'), snap => {
     if (snap.exists()) {
-      config = { diasAlertaFerias: 360, ...snap.data() };
+      config = { diasAlertaFerias: 360, asoPeriodicidadePadrao: 12, ...snap.data() };
       document.getElementById('input-va').value = config.valorDiarioVA;
       document.getElementById('input-vt').value = config.valorDiarioVT;
       document.getElementById('input-dias-alerta-ferias').value = config.diasAlertaFerias;
+      document.getElementById('input-aso-periodicidade-padrao').value = config.asoPeriodicidadePadrao;
       renderLancamentoTable();
       renderFeriasTable();
+      renderColaboradoresTable();
       atualizarStatsDashboard();
     }
   });
@@ -1099,7 +1103,8 @@ async function salvarConfig() {
   const valorDiarioVA = Number(document.getElementById('input-va').value || 0);
   const valorDiarioVT = Number(document.getElementById('input-vt').value || 0);
   const diasAlertaFerias = Number(document.getElementById('input-dias-alerta-ferias').value || 360);
-  await setDoc(doc(db, 'config', 'geral'), { valorDiarioVA, valorDiarioVT, diasAlertaFerias });
+  const asoPeriodicidadePadrao = Number(document.getElementById('input-aso-periodicidade-padrao').value || 12);
+  await setDoc(doc(db, 'config', 'geral'), { valorDiarioVA, valorDiarioVT, diasAlertaFerias, asoPeriodicidadePadrao });
   const tag = document.getElementById('config-saved');
   tag.style.display = 'inline';
   setTimeout(() => tag.style.display = 'none', 2000);
