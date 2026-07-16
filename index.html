@@ -1331,14 +1331,14 @@ function atualizarStatsDashboard() {
 
   const listaAniversariantes = document.getElementById('lista-aniversariantes');
   if (listaAniversariantes) {
-    const mesAtualReal = new Date().getMonth() + 1;
+    const mesNavegado = Number(mesAtual.split('-')[1]);
     const aniversariantes = Array.from(colaboradoresMap.values())
       .filter(c => c.ativo && c.dataNascimento)
       .map(c => ({ nome: c.nome, dia: Number(c.dataNascimento.split('-')[2]), mes: Number(c.dataNascimento.split('-')[1]) }))
-      .filter(c => c.mes === mesAtualReal)
+      .filter(c => c.mes === mesNavegado)
       .sort((a, b) => a.dia - b.dia);
     listaAniversariantes.innerHTML = aniversariantes.length === 0
-      ? 'Nenhum aniversariante este mês.'
+      ? 'Nenhum aniversariante neste mês.'
       : aniversariantes.map(a => `${String(a.dia).padStart(2, '0')} — ${a.nome}`).join('<br>');
   }
 }
