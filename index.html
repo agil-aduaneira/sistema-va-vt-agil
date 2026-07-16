@@ -129,6 +129,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
     <button class="tab-btn" data-tab="ferias">Férias</button>
     <button class="tab-btn" data-tab="decimo">13º Salário</button>
     <button class="tab-btn" data-tab="dossie">Dossiê</button>
+    <button class="tab-btn" data-tab="relatorios">Relatórios</button>
   </div>
 
   <!-- ═══ DASHBOARD ═══ -->
@@ -605,6 +606,114 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       </table>
     </div>
   </div>
+
+  <!-- ═══ RELATÓRIOS ═══ -->
+  <div class="tab-pane" id="tab-relatorios">
+    <h1>Relatórios</h1>
+    <div class="subtitle">Visão consolidada de todos os colaboradores — sem precisar abrir um por um. Envio automático de alerta por e-mail fica para uma etapa seguinte.</div>
+
+    <h1 style="margin-top:24px">Férias</h1>
+    <div class="card form-row">
+      <div class="field" style="min-width:200px">
+        <label>Colaborador</label>
+        <select id="rel-ferias-colaborador"><option value="">Todos</option></select>
+      </div>
+      <div class="field" style="min-width:160px">
+        <label>Setor</label>
+        <select id="rel-ferias-setor">
+          <option value="">Todos</option>
+          <option value="Importação">Importação</option>
+          <option value="Exportação">Exportação</option>
+          <option value="Financeiro">Financeiro</option>
+          <option value="Externo">Externo</option>
+        </select>
+      </div>
+      <div class="field" style="min-width:160px">
+        <label>Situação</label>
+        <select id="rel-ferias-status">
+          <option value="">Todas</option>
+          <option value="vencido">Vencidas</option>
+          <option value="a-vencer">A vencer</option>
+          <option value="ativo">Em dia</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Limite de</label>
+        <input type="date" id="rel-ferias-de">
+      </div>
+      <div class="field">
+        <label>Limite até</label>
+        <input type="date" id="rel-ferias-ate">
+      </div>
+    </div>
+    <div class="card table-scroll" style="padding:0">
+      <table>
+        <thead><tr><th>Colaborador</th><th>Setor</th><th>Admissão</th><th>Período Aquisitivo</th><th>Limite</th><th>Situação</th></tr></thead>
+        <tbody id="rel-ferias-tbody"></tbody>
+      </table>
+    </div>
+
+    <h1 style="margin-top:36px">13º Salário</h1>
+    <div class="subtitle">Do ano vigente selecionado na aba "13º Salário".</div>
+    <div class="card form-row">
+      <div class="field" style="min-width:160px">
+        <label>Setor</label>
+        <select id="rel-decimo-setor">
+          <option value="">Todos</option>
+          <option value="Importação">Importação</option>
+          <option value="Exportação">Exportação</option>
+          <option value="Financeiro">Financeiro</option>
+          <option value="Externo">Externo</option>
+        </select>
+      </div>
+    </div>
+    <div class="card table-scroll" style="padding:0">
+      <table>
+        <thead><tr><th>Colaborador</th><th>Setor</th><th>Valor 1ª parcela</th><th>Data 1ª parcela</th><th>Valor 2ª parcela</th><th>Data 2ª parcela</th></tr></thead>
+        <tbody id="rel-decimo-tbody"></tbody>
+      </table>
+    </div>
+
+    <h1 style="margin-top:36px">Dossiê</h1>
+    <div class="card form-row">
+      <div class="field" style="min-width:200px">
+        <label>Colaborador</label>
+        <select id="rel-dossie-colaborador"><option value="">Todos</option></select>
+      </div>
+      <div class="field" style="min-width:200px">
+        <label>Tipo</label>
+        <select id="rel-dossie-tipo">
+          <option value="">Todos</option>
+          <option value="Mudança de cargo">Mudança de cargo</option>
+          <option value="Mudança de salário">Mudança de salário</option>
+          <option value="Atraso">Atraso</option>
+          <option value="Falta">Falta</option>
+          <option value="Atestado">Atestado</option>
+          <option value="Ocorrência">Ocorrência</option>
+          <option value="Feedback">Feedback</option>
+          <option value="Multa / Erros">Multa / Erros</option>
+          <option value="Advertência">Advertência</option>
+          <option value="Qualidade">Qualidade</option>
+          <option value="Vulnerabilidade">Vulnerabilidade</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>De</label>
+        <input type="date" id="rel-dossie-de">
+      </div>
+      <div class="field">
+        <label>Até</label>
+        <input type="date" id="rel-dossie-ate">
+      </div>
+    </div>
+    <div class="card table-scroll" style="padding:0">
+      <table>
+        <thead><tr><th>Data</th><th>Colaborador</th><th>Tipo</th><th>Descrição</th></tr></thead>
+        <tbody id="rel-dossie-tbody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script type="module">
@@ -730,6 +839,7 @@ function iniciarApp() {
   carregarDashboard();
   escutarDecimosDoAno();
   escutarTodasFerias();
+  escutarDossieGeral();
 
   document.getElementById('btn-mes-anterior').addEventListener('click', () => {
     mesAtual = proximoMes(mesAtual, -1);
@@ -782,6 +892,14 @@ function iniciarApp() {
   document.getElementById('toggle-form-vt').addEventListener('click', (e) => alternarBadgeForm(e.target));
   document.getElementById('btn-add-rota').addEventListener('click', criarRota);
   document.getElementById('btn-add-cargo').addEventListener('click', criarCargo);
+
+  for (const id of ['rel-ferias-colaborador', 'rel-ferias-setor', 'rel-ferias-status', 'rel-ferias-de', 'rel-ferias-ate']) {
+    document.getElementById(id).addEventListener('change', renderRelatorioFerias);
+  }
+  document.getElementById('rel-decimo-setor').addEventListener('change', renderRelatorioDecimo);
+  for (const id of ['rel-dossie-colaborador', 'rel-dossie-tipo', 'rel-dossie-de', 'rel-dossie-ate']) {
+    document.getElementById(id).addEventListener('change', renderRelatorioDossie);
+  }
 
   document.getElementById('chk-select-all-colab').addEventListener('change', (e) => {
     const marcarTodos = e.target.checked;
@@ -886,8 +1004,12 @@ function escutarColaboradores() {
     renderSelectAddColaborador();
     renderSelectFeriasColaborador();
     renderSelectDossieColaborador();
+    renderSelectRelatorios();
     renderLancamentoTable(); // recalcula com dados de colaborador atualizados
     atualizarStatsDashboard();
+    renderRelatorioFerias();
+    renderRelatorioDecimo();
+    renderRelatorioDossie();
   });
 }
 
@@ -1663,6 +1785,7 @@ function escutarDecimosDoAno() {
     decimosDoAno.clear();
     snap.forEach(d => decimosDoAno.set(d.data().colaboradorId, { id: d.id, ...d.data() }));
     renderDecimoTable();
+    renderRelatorioDecimo();
   });
 }
 
@@ -1781,6 +1904,7 @@ function escutarTodasFerias() {
     renderColaboradoresTable();
     sugerirProximoLimiteFerias();
     atualizarStatsDashboard();
+    renderRelatorioFerias();
   });
 }
 
@@ -1990,6 +2114,18 @@ function escutarDossie(colaboradorId) {
   });
 }
 
+// Dossiê de todos os colaboradores (sem filtro), só pro Relatório —
+// diferente de escutarDossie(), que é por colaborador.
+let dossieGeralMap = new Map();
+
+function escutarDossieGeral() {
+  onSnapshot(collection(db, 'dossie'), snap => {
+    dossieGeralMap.clear();
+    snap.forEach(d => dossieGeralMap.set(d.id, { id: d.id, ...d.data() }));
+    renderRelatorioDossie();
+  });
+}
+
 function renderDossieTable() {
   const tbody = document.getElementById('dossie-tbody');
   const linhas = Array.from(dossieEventos.values()).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
@@ -2073,6 +2209,117 @@ async function criarRegistroDossie() {
     btn.disabled = false;
     btn.textContent = 'Adicionar registro';
   }
+}
+
+// ── Relatórios ──────────────────────────────────────────────────
+function renderSelectRelatorios() {
+  const linhas = Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
+  const optionsTodos = '<option value="">Todos</option>' +
+    linhas.map(([id, c]) => `<option value="${id}">${c.nome}</option>`).join('');
+  for (const selectId of ['rel-ferias-colaborador', 'rel-dossie-colaborador']) {
+    const select = document.getElementById(selectId);
+    const valorAtual = select.value;
+    select.innerHTML = optionsTodos;
+    select.value = valorAtual;
+  }
+}
+
+function renderRelatorioFerias() {
+  const tbody = document.getElementById('rel-ferias-tbody');
+  if (!tbody) return;
+  const filtroColaborador = document.getElementById('rel-ferias-colaborador').value;
+  const filtroSetor = document.getElementById('rel-ferias-setor').value;
+  const filtroStatus = document.getElementById('rel-ferias-status').value;
+  const filtroDe = document.getElementById('rel-ferias-de').value;
+  const filtroAte = document.getElementById('rel-ferias-ate').value;
+
+  const linhas = Array.from(colaboradoresMap.entries())
+    .filter(([id, c]) => c.ativo && c.dataAdmissao)
+    .filter(([id]) => !filtroColaborador || id === filtroColaborador)
+    .filter(([, c]) => !filtroSetor || c.areaAtuacao === filtroSetor)
+    .map(([id, c]) => {
+      const numeroProximo = (todasFeriasMap.get(id) || []).length + 1;
+      const limite = proximoLimiteFeriasColaborador(id, c);
+      const aquisitivo = calcularPeriodoAquisitivoFerias(c.dataAdmissao, numeroProximo);
+      const alerta = limite ? calcularAlertaFerias({ limite, gozadaInicio: null }) : { texto: '—', classe: 'inativo' };
+      return { id, c, limite, aquisitivo, alerta };
+    })
+    .filter(l => !filtroStatus || l.alerta.classe === filtroStatus)
+    .filter(l => !filtroDe || !l.limite || l.limite >= filtroDe)
+    .filter(l => !filtroAte || !l.limite || l.limite <= filtroAte)
+    .sort((a, b) => (a.limite || '').localeCompare(b.limite || ''));
+
+  if (linhas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Nenhum resultado para os filtros selecionados.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = linhas.map(({ c, limite, aquisitivo, alerta }) => `
+    <tr>
+      <td>${c.nome}</td>
+      <td>${c.areaAtuacao || '—'}</td>
+      <td>${formatarDataBR(c.dataAdmissao)}</td>
+      <td>${formatarDataBR(aquisitivo.inicio)} a ${formatarDataBR(aquisitivo.fim)}</td>
+      <td>${limite ? formatarDataBR(limite) : '—'}</td>
+      <td><span class="badge ${alerta.classe}">${alerta.texto}</span></td>
+    </tr>
+  `).join('');
+}
+
+function renderRelatorioDecimo() {
+  const tbody = document.getElementById('rel-decimo-tbody');
+  if (!tbody) return;
+  const filtroSetor = document.getElementById('rel-decimo-setor').value;
+  const linhas = Array.from(decimosDoAno.values())
+    .map(l => ({ l, c: colaboradoresMap.get(l.colaboradorId) }))
+    .filter(x => x.c)
+    .filter(x => !filtroSetor || x.c.areaAtuacao === filtroSetor)
+    .sort((a, b) => a.c.nome.localeCompare(b.c.nome));
+
+  if (linhas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Nenhum colaborador lançado neste ano ainda.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = linhas.map(({ l, c }) => `
+    <tr>
+      <td>${c.nome}</td>
+      <td>${c.areaAtuacao || '—'}</td>
+      <td>${formatBRL(l.valorParcela1 || 0)}</td>
+      <td>${l.dataParcela1 ? formatarDataBR(l.dataParcela1) : '—'}</td>
+      <td>${formatBRL(l.valorParcela2 || 0)}</td>
+      <td>${l.dataParcela2 ? formatarDataBR(l.dataParcela2) : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+function renderRelatorioDossie() {
+  const tbody = document.getElementById('rel-dossie-tbody');
+  if (!tbody) return;
+  const filtroColaborador = document.getElementById('rel-dossie-colaborador').value;
+  const filtroTipo = document.getElementById('rel-dossie-tipo').value;
+  const filtroDe = document.getElementById('rel-dossie-de').value;
+  const filtroAte = document.getElementById('rel-dossie-ate').value;
+
+  const linhas = Array.from(dossieGeralMap.values())
+    .map(e => ({ e, c: colaboradoresMap.get(e.colaboradorId) }))
+    .filter(x => x.c)
+    .filter(x => !filtroColaborador || x.e.colaboradorId === filtroColaborador)
+    .filter(x => !filtroTipo || x.e.tipo === filtroTipo)
+    .filter(x => !filtroDe || !x.e.data || x.e.data >= filtroDe)
+    .filter(x => !filtroAte || !x.e.data || x.e.data <= filtroAte)
+    .sort((a, b) => (b.e.data || '').localeCompare(a.e.data || ''));
+
+  if (linhas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">Nenhum resultado para os filtros selecionados.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = linhas.map(({ e, c }) => `
+    <tr>
+      <td>${e.data ? formatarDataBR(e.data) : '—'}</td>
+      <td>${c.nome}</td>
+      <td>${e.tipo}</td>
+      <td>${e.descricao || ''}</td>
+    </tr>
+  `).join('');
 }
 </script>
 </body>
