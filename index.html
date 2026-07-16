@@ -243,6 +243,20 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <label>Nome</label>
         <input type="text" id="input-nome">
       </div>
+      <div class="field" style="min-width:160px">
+        <label>Área de atuação</label>
+        <select id="input-area-atuacao">
+          <option value="">Selecione...</option>
+          <option value="Importação">Importação</option>
+          <option value="Exportação">Exportação</option>
+          <option value="Financeiro">Financeiro</option>
+          <option value="Externo">Externo</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Data de admissão</label>
+        <input type="date" id="input-admissao-colab">
+      </div>
       <div class="field">
         <label>Salário base</label>
         <input type="number" step="0.01" id="input-salario">
@@ -278,7 +292,14 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       <button class="btn btn-ghost" id="btn-cancelar-edicao" style="display:none">Cancelar</button>
     </div>
 
-    <div class="card form-row">
+    <div class="card form-row" id="painel-atalhos-edicao" style="display:none">
+      <div class="field" style="flex:1"><label>Atalhos para este colaborador</label></div>
+      <button class="btn btn-dark" id="btn-atalho-ferias">Férias</button>
+      <button class="btn btn-dark" id="btn-atalho-decimo">13º Salário</button>
+      <button class="btn btn-dark" id="btn-atalho-dossie">Dossiê</button>
+    </div>
+
+    <div class="card form-row" id="painel-bulk-colab">
       <div class="field">
         <label>V.A. (colaboradores marcados)</label>
         <select id="select-bulk-va"><option value="true">Recebe</option><option value="false">Não recebe</option></select>
@@ -296,12 +317,12 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       <button class="btn btn-dark" id="btn-bulk-rota">Aplicar aos marcados</button>
     </div>
 
-    <div class="card table-scroll" style="padding:0">
+    <div class="card table-scroll" id="painel-tabela-colab" style="padding:0">
       <table>
         <thead>
           <tr>
             <th><input type="checkbox" id="chk-select-all-colab" title="Selecionar todos"></th>
-            <th>Nome</th><th>Salário base</th><th>Plano de saúde</th><th>Status</th>
+            <th>Nome</th><th>Área</th><th>Salário base</th><th>Plano de saúde</th><th>Status</th>
             <th>V.A.</th><th>V.T.</th><th>ASO</th><th>Nascimento</th><th></th>
           </tr>
         </thead>
@@ -509,6 +530,8 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
           <option value="Atestado">Atestado</option>
           <option value="Ocorrência">Ocorrência</option>
           <option value="Feedback">Feedback</option>
+          <option value="Multa / Erros">Multa / Erros</option>
+          <option value="Advertência">Advertência</option>
           <option value="Qualidade">Qualidade</option>
           <option value="Vulnerabilidade">Vulnerabilidade</option>
           <option value="Outro">Outro</option>
@@ -525,6 +548,18 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       <div class="field" id="campo-dossie-para">
         <label>Valor novo</label>
         <input type="text" id="input-dossie-para">
+      </div>
+      <div class="field" id="campo-dossie-valor" style="display:none">
+        <label>Valor (R$)</label>
+        <input type="number" step="0.01" min="0" id="input-dossie-valor">
+      </div>
+      <div class="field" id="campo-dossie-dias-afastado" style="display:none">
+        <label>Dias afastado</label>
+        <input type="number" min="0" id="input-dossie-dias-afastado" value="0">
+      </div>
+      <div class="field" id="campo-dossie-proximo" style="display:none">
+        <label>Próximo contato</label>
+        <input type="date" id="input-dossie-proximo">
       </div>
       <div class="field" id="campo-dossie-anexo" style="display:none">
         <label>Anexar arquivo</label>
@@ -690,6 +725,9 @@ function iniciarApp() {
   document.getElementById('btn-exportar').addEventListener('click', exportarMesAtual);
   document.getElementById('btn-add-colab').addEventListener('click', criarColaborador);
   document.getElementById('btn-cancelar-edicao').addEventListener('click', cancelarEdicaoColaborador);
+  document.getElementById('btn-atalho-ferias').addEventListener('click', (e) => irParaColaboradorEm('ferias', e.target.dataset.colabId));
+  document.getElementById('btn-atalho-decimo').addEventListener('click', (e) => irParaColaboradorEm('decimo', e.target.dataset.colabId));
+  document.getElementById('btn-atalho-dossie').addEventListener('click', (e) => irParaColaboradorEm('dossie', e.target.dataset.colabId));
   document.getElementById('btn-salvar-config').addEventListener('click', salvarConfig);
 
   document.getElementById('chk-select-all').addEventListener('change', (e) => {
@@ -785,6 +823,9 @@ function iniciarApp() {
     document.getElementById('campo-dossie-descricao').style.display = ehMudanca ? 'none' : 'flex';
     document.getElementById('campo-dossie-de').style.display = ehMudanca ? 'flex' : 'none';
     document.getElementById('campo-dossie-para').style.display = ehMudanca ? 'flex' : 'none';
+    document.getElementById('campo-dossie-valor').style.display = tipo === 'Multa / Erros' ? 'flex' : 'none';
+    document.getElementById('campo-dossie-dias-afastado').style.display = tipo === 'Advertência' ? 'flex' : 'none';
+    document.getElementById('campo-dossie-proximo').style.display = tipo === 'Feedback' ? 'flex' : 'none';
     document.getElementById('label-dossie-data').textContent = ehMudanca ? 'A partir de' : 'Data';
   });
   document.getElementById('btn-add-dossie').addEventListener('click', criarRegistroDossie);
@@ -834,7 +875,7 @@ function renderColaboradoresTable() {
   const tbody = document.getElementById('colaboradores-tbody');
   const linhas = Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
   if (linhas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" class="empty-msg">Nenhum colaborador cadastrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" class="empty-msg">Nenhum colaborador cadastrado ainda.</td></tr>';
     return;
   }
   tbody.innerHTML = linhas.map(([id, c]) => {
@@ -849,6 +890,7 @@ function renderColaboradoresTable() {
     <tr>
       <td><input type="checkbox" data-select-colab-id="${id}" ${selecionadosColab.has(id) ? 'checked' : ''}></td>
       <td>${c.nome}</td>
+      <td>${c.areaAtuacao || '—'}</td>
       <td>${formatBRL(c.salarioBase)}</td>
       <td>${c.valorPlanoSaude > 0 ? formatBRL(c.valorPlanoSaude) : '—'}</td>
       <td>${statusCell}</td>
@@ -857,12 +899,25 @@ function renderColaboradoresTable() {
       <td><span class="badge ${aso.classe}" title="${c.asoData ? 'Último ASO: ' + c.asoData : 'ASO nunca cadastrado'}">${aso.texto}</span></td>
       <td>${c.dataNascimento ? formatarDataBR(c.dataNascimento) : '—'}</td>
       <td style="text-align:right">
+        <button class="btn-link" data-goto-ferias="${id}" title="Ver férias">Férias</button>
+        <button class="btn-link" data-goto-decimo="${id}" title="Ver 13º salário">13º</button>
+        <button class="btn-link" data-goto-dossie="${id}" title="Ver dossiê">Dossiê</button>
         <button class="btn-link" style="color:var(--blue)" data-edit-id="${id}">Editar</button>
         <button class="btn-link" data-del-id="${id}">Excluir</button>
       </td>
     </tr>
   `;
   }).join('');
+
+  tbody.querySelectorAll('[data-goto-ferias]').forEach(btn => {
+    btn.addEventListener('click', () => irParaColaboradorEm('ferias', btn.dataset.gotoFerias));
+  });
+  tbody.querySelectorAll('[data-goto-decimo]').forEach(btn => {
+    btn.addEventListener('click', () => irParaColaboradorEm('decimo', btn.dataset.gotoDecimo));
+  });
+  tbody.querySelectorAll('[data-goto-dossie]').forEach(btn => {
+    btn.addEventListener('click', () => irParaColaboradorEm('dossie', btn.dataset.gotoDossie));
+  });
 
   tbody.querySelectorAll('[data-select-colab-id]').forEach(chk => {
     chk.addEventListener('change', () => {
@@ -909,6 +964,28 @@ function renderColaboradoresTable() {
   });
 }
 
+// Atalho: troca de aba e, quando a aba tem um seletor de colaborador
+// (Férias/Dossiê), já deixa esse colaborador selecionado. No 13º Salário,
+// que lista todos de uma vez, só rola até a linha do colaborador se existir.
+function irParaColaboradorEm(tabName, colaboradorId) {
+  const btnTab = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+  if (btnTab) btnTab.click();
+  if (tabName === 'ferias') {
+    const sel = document.getElementById('select-ferias-colaborador');
+    sel.value = colaboradorId;
+    sel.dispatchEvent(new Event('change'));
+  } else if (tabName === 'dossie') {
+    const sel = document.getElementById('select-dossie-colaborador');
+    sel.value = colaboradorId;
+    sel.dispatchEvent(new Event('change'));
+  } else if (tabName === 'decimo') {
+    setTimeout(() => {
+      const row = document.querySelector(`#decimo-tbody tr[data-decimo-id="${colaboradorId}"]`);
+      if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  }
+}
+
 async function aplicarEmLoteColaborador(campo, valor) {
   if (selecionadosColab.size === 0) {
     alert('Marque pelo menos um colaborador na tabela antes de aplicar.');
@@ -937,6 +1014,8 @@ function iniciarEdicaoColaborador(id) {
   if (!c) return;
   editandoColaboradorId = id;
   document.getElementById('input-nome').value = c.nome;
+  document.getElementById('input-area-atuacao').value = c.areaAtuacao || '';
+  document.getElementById('input-admissao-colab').value = c.dataAdmissao || '';
   document.getElementById('input-salario').value = c.salarioBase;
   document.getElementById('input-plano').value = c.valorPlanoSaude || '';
   definirBadgeForm('toggle-form-va', c.recebeVA !== false);
@@ -947,12 +1026,20 @@ function iniciarEdicaoColaborador(id) {
   document.getElementById('input-nascimento').value = c.dataNascimento || '';
   document.getElementById('btn-add-colab').textContent = 'Salvar alterações';
   document.getElementById('btn-cancelar-edicao').style.display = 'inline-block';
+  document.getElementById('painel-atalhos-edicao').style.display = 'flex';
+  document.getElementById('painel-bulk-colab').style.display = 'none';
+  document.getElementById('painel-tabela-colab').style.display = 'none';
+  document.getElementById('btn-atalho-ferias').dataset.colabId = id;
+  document.getElementById('btn-atalho-decimo').dataset.colabId = id;
+  document.getElementById('btn-atalho-dossie').dataset.colabId = id;
   document.getElementById('input-nome').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function cancelarEdicaoColaborador() {
   editandoColaboradorId = null;
   document.getElementById('input-nome').value = '';
+  document.getElementById('input-area-atuacao').value = '';
+  document.getElementById('input-admissao-colab').value = '';
   document.getElementById('input-salario').value = '';
   document.getElementById('input-plano').value = '';
   definirBadgeForm('toggle-form-va', true);
@@ -963,10 +1050,15 @@ function cancelarEdicaoColaborador() {
   document.getElementById('input-nascimento').value = '';
   document.getElementById('btn-add-colab').textContent = 'Adicionar colaborador';
   document.getElementById('btn-cancelar-edicao').style.display = 'none';
+  document.getElementById('painel-atalhos-edicao').style.display = 'none';
+  document.getElementById('painel-bulk-colab').style.display = 'flex';
+  document.getElementById('painel-tabela-colab').style.display = 'block';
 }
 
 async function criarColaborador() {
   const nome = document.getElementById('input-nome').value.trim();
+  const areaAtuacao = document.getElementById('input-area-atuacao').value || null;
+  const dataAdmissao = document.getElementById('input-admissao-colab').value || null;
   const salarioBase = Number(document.getElementById('input-salario').value || 0);
   const valorPlanoSaude = Number(document.getElementById('input-plano').value || 0);
   const recebeVA = document.getElementById('toggle-form-va').dataset.value === 'true';
@@ -978,13 +1070,13 @@ async function criarColaborador() {
   if (!nome || !salarioBase) { alert('Nome e salário base são obrigatórios.'); return; }
 
   if (editandoColaboradorId) {
-    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), { nome, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId, asoData, asoPeriodicidade, dataNascimento });
+    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), { nome, areaAtuacao, dataAdmissao, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId, asoData, asoPeriodicidade, dataNascimento });
     cancelarEdicaoColaborador();
     return;
   }
 
   const id = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  await setDoc(doc(db, 'colaboradores', id), { nome, salarioBase, valorPlanoSaude, ativo: true, recebeVA, recebeVT, rotaId, asoData, asoPeriodicidade, dataNascimento });
+  await setDoc(doc(db, 'colaboradores', id), { nome, areaAtuacao, dataAdmissao, salarioBase, valorPlanoSaude, ativo: true, recebeVA, recebeVT, rotaId, asoData, asoPeriodicidade, dataNascimento });
   cancelarEdicaoColaborador();
 }
 
@@ -1801,7 +1893,7 @@ function renderDossieTable() {
     <tr>
       <td>${e.data ? formatarDataBR(e.data) : '—'}</td>
       <td>${e.tipo}</td>
-      <td>${e.descricao || ''}</td>
+      <td>${e.descricao || ''}${e.proximo ? ` <span class="badge a-vencer" title="Próximo contato agendado">Próximo: ${formatarDataBR(e.proximo)}</span>` : ''}</td>
       <td>${e.anexoUrl ? `<a href="${e.anexoUrl}" target="_blank" rel="noopener">Ver arquivo</a>` : '—'}</td>
       <td style="text-align:right"><button class="btn-link" data-del-dossie="${e.id}">Excluir</button></td>
     </tr>
@@ -1819,16 +1911,24 @@ async function criarRegistroDossie() {
   const data = document.getElementById('input-dossie-data').value;
   const tipo = document.getElementById('input-dossie-tipo').value;
   const ehMudanca = tipo === 'Mudança de cargo' || tipo === 'Mudança de salário';
+  const ehMulta = tipo === 'Multa / Erros';
+  const ehAdvertencia = tipo === 'Advertência';
+  const ehFeedback = tipo === 'Feedback';
   const de = document.getElementById('input-dossie-de').value.trim();
   const para = document.getElementById('input-dossie-para').value.trim();
-  const descricao = ehMudanca ? `De: ${de} → Para: ${para}` : document.getElementById('input-dossie-descricao').value.trim();
+  const valor = ehMulta ? Number(document.getElementById('input-dossie-valor').value || 0) : null;
+  const diasAfastado = ehAdvertencia ? Number(document.getElementById('input-dossie-dias-afastado').value || 0) : null;
+  const proximo = ehFeedback ? (document.getElementById('input-dossie-proximo').value || null) : null;
+  let descricao = ehMudanca ? `De: ${de} → Para: ${para}` : document.getElementById('input-dossie-descricao').value.trim();
+  if (ehMulta && valor) descricao += ` — Valor: ${formatBRL(valor)}`;
+  if (ehAdvertencia && diasAfastado > 0) descricao += ` — ${diasAfastado} dia(s) afastado`;
   const arquivoInput = document.getElementById('input-dossie-anexo');
   const arquivo = arquivoInput.files[0];
 
   if (!colaboradorId) { alert('Selecione um colaborador primeiro.'); return; }
   if (!data) { alert('Data é obrigatória.'); return; }
   if (ehMudanca && (!de || !para)) { alert('Informe o valor anterior e o valor novo.'); return; }
-  if (!ehMudanca && !descricao) { alert('Descrição é obrigatória.'); return; }
+  if (!ehMudanca && !document.getElementById('input-dossie-descricao').value.trim()) { alert('Descrição é obrigatória.'); return; }
 
   const btn = document.getElementById('btn-add-dossie');
   btn.disabled = true;
@@ -1843,12 +1943,15 @@ async function criarRegistroDossie() {
       anexoUrl = await getDownloadURL(storageRef);
     }
 
-    await setDoc(doc(collection(db, 'dossie')), { colaboradorId, data, tipo, descricao, anexoUrl });
+    await setDoc(doc(collection(db, 'dossie')), { colaboradorId, data, tipo, descricao, anexoUrl, valor, diasAfastado, proximo });
 
     document.getElementById('input-dossie-data').value = '';
     document.getElementById('input-dossie-descricao').value = '';
     document.getElementById('input-dossie-de').value = '';
     document.getElementById('input-dossie-para').value = '';
+    document.getElementById('input-dossie-valor').value = '';
+    document.getElementById('input-dossie-dias-afastado').value = '0';
+    document.getElementById('input-dossie-proximo').value = '';
     arquivoInput.value = '';
   } catch (err) {
     alert('Erro ao salvar (se for anexo, o Storage do Firebase pode ainda não estar ativado): ' + err.message);
