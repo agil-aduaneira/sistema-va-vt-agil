@@ -244,7 +244,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <input type="text" id="input-nome">
       </div>
       <div class="field" style="min-width:160px">
-        <label>Área de atuação</label>
+        <label>Setor</label>
         <select id="input-area-atuacao">
           <option value="">Selecione...</option>
           <option value="Importação">Importação</option>
@@ -318,7 +318,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <thead>
           <tr>
             <th><input type="checkbox" id="chk-select-all-colab" title="Selecionar todos"></th>
-            <th>Nome</th><th>Área</th><th>Salário base</th><th>Plano de saúde</th><th>Status</th>
+            <th>Nome</th><th>Setor</th><th>Salário base</th><th>Plano de saúde</th><th>Status</th>
             <th>V.A.</th><th>V.T.</th><th>ASO</th><th>Nascimento</th><th></th>
           </tr>
         </thead>
@@ -350,6 +350,10 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
           <label>Periodicidade padrão do ASO (meses)</label>
           <input type="number" min="1" id="input-aso-periodicidade-padrao" value="12">
         </div>
+        <div class="field">
+          <label>Direito padrão de férias (dias)</label>
+          <input type="number" min="1" step="0.5" id="input-direito-ferias-padrao" value="30">
+        </div>
         <button class="btn btn-primary" id="btn-salvar-config">Salvar</button>
         <span id="config-saved" style="display:none;color:var(--green);font-size:13px">Salvo!</span>
       </div>
@@ -374,6 +378,24 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       <table>
         <thead><tr><th>Rota</th><th>Valor adicional / dia</th><th></th></tr></thead>
         <tbody id="rotas-tbody"></tbody>
+      </table>
+    </div>
+
+    <h1 style="margin-top:36px">Cargos</h1>
+    <div class="subtitle">Lista de cargos usada no Dossiê, em "Mudança de cargo".</div>
+
+    <div class="card form-row">
+      <div class="field" style="flex:1;min-width:220px">
+        <label>Nome do cargo</label>
+        <input type="text" id="input-cargo-nome" placeholder="Ex.: Analista de Importação">
+      </div>
+      <button class="btn btn-primary" id="btn-add-cargo">Adicionar cargo</button>
+    </div>
+
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table>
+        <thead><tr><th>Cargo</th><th></th></tr></thead>
+        <tbody id="cargos-tbody"></tbody>
       </table>
     </div>
   </div>
@@ -414,11 +436,11 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <input type="date" id="input-periodo-limite">
       </div>
       <div class="field">
-        <label>Gozada de</label>
+        <label>Início férias</label>
         <input type="date" id="input-periodo-gozada-inicio">
       </div>
       <div class="field">
-        <label>Gozada até</label>
+        <label>Final férias</label>
         <input type="date" id="input-periodo-gozada-fim">
       </div>
       <div class="field">
@@ -443,7 +465,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
 
     <div class="card" style="padding:0;overflow-x:auto">
       <table>
-        <thead><tr><th>#</th><th>Período Aquisitivo</th><th>Limite até</th><th>Gozada de</th><th>Gozada até</th><th>Retorno</th><th>Direito (Dias)</th><th>Dias Gozados</th><th>Restam (Dias)</th><th>Observações</th><th>Alerta</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>Período Aquisitivo</th><th>Limite até</th><th>Início férias</th><th>Final férias</th><th>Retorno</th><th>Direito (Dias)</th><th>Dias Gozados</th><th>Restam (Dias)</th><th>Observações</th><th>Alerta</th><th></th></tr></thead>
         <tbody id="ferias-tbody"><tr><td colspan="12" class="empty-msg">Selecione um colaborador acima.</td></tr></tbody>
       </table>
     </div>
@@ -541,11 +563,19 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <label>Descrição</label>
         <input type="text" id="input-dossie-descricao">
       </div>
-      <div class="field" id="campo-dossie-de">
+      <div class="field" id="campo-dossie-cargo-de" style="min-width:200px">
+        <label>Cargo anterior</label>
+        <select id="input-dossie-cargo-de"><option value="">Selecione...</option></select>
+      </div>
+      <div class="field" id="campo-dossie-cargo-para" style="min-width:200px">
+        <label>Cargo novo</label>
+        <select id="input-dossie-cargo-para"><option value="">Selecione...</option></select>
+      </div>
+      <div class="field" id="campo-dossie-de" style="display:none">
         <label>Valor anterior</label>
         <input type="text" id="input-dossie-de">
       </div>
-      <div class="field" id="campo-dossie-para">
+      <div class="field" id="campo-dossie-para" style="display:none">
         <label>Valor novo</label>
         <input type="text" id="input-dossie-para">
       </div>
@@ -686,13 +716,14 @@ function mesAtualStr() {
 let colaboradoresMap = new Map(); // id -> {nome, salarioBase, valorPlanoSaude, ativo, recebeVA, recebeVT, rotaId}
 let rotasMap = new Map(); // id -> {nome, valorAdicional}
 let selecionadosColab = new Set();
-let config = { valorDiarioVA: 0, valorDiarioVT: 0, diasAlertaFerias: 360, asoPeriodicidadePadrao: 12 };
+let config = { valorDiarioVA: 0, valorDiarioVT: 0, diasAlertaFerias: 360, asoPeriodicidadePadrao: 12, direitoFeriasPadrao: 30 };
 let mesAtual = mesAtualStr();
 let unsubLancamentos = null;
 
 function iniciarApp() {
   escutarColaboradores();
   escutarRotas();
+  escutarCargos();
   escutarConfig();
   escutarLancamentosDoMes();
   carregarHistorico();
@@ -750,6 +781,7 @@ function iniciarApp() {
   document.getElementById('toggle-form-va').addEventListener('click', (e) => alternarBadgeForm(e.target));
   document.getElementById('toggle-form-vt').addEventListener('click', (e) => alternarBadgeForm(e.target));
   document.getElementById('btn-add-rota').addEventListener('click', criarRota);
+  document.getElementById('btn-add-cargo').addEventListener('click', criarCargo);
 
   document.getElementById('chk-select-all-colab').addEventListener('change', (e) => {
     const marcarTodos = e.target.checked;
@@ -818,11 +850,15 @@ function iniciarApp() {
   });
   document.getElementById('input-dossie-tipo').addEventListener('change', (e) => {
     const tipo = e.target.value;
-    const ehMudanca = tipo === 'Mudança de cargo' || tipo === 'Mudança de salário';
+    const ehMudancaCargo = tipo === 'Mudança de cargo';
+    const ehMudancaSalario = tipo === 'Mudança de salário';
+    const ehMudanca = ehMudancaCargo || ehMudancaSalario;
     document.getElementById('campo-dossie-anexo').style.display = (tipo === 'Atestado' || tipo === 'Feedback') ? 'flex' : 'none';
     document.getElementById('campo-dossie-descricao').style.display = ehMudanca ? 'none' : 'flex';
-    document.getElementById('campo-dossie-de').style.display = ehMudanca ? 'flex' : 'none';
-    document.getElementById('campo-dossie-para').style.display = ehMudanca ? 'flex' : 'none';
+    document.getElementById('campo-dossie-cargo-de').style.display = ehMudancaCargo ? 'flex' : 'none';
+    document.getElementById('campo-dossie-cargo-para').style.display = ehMudancaCargo ? 'flex' : 'none';
+    document.getElementById('campo-dossie-de').style.display = ehMudancaSalario ? 'flex' : 'none';
+    document.getElementById('campo-dossie-para').style.display = ehMudancaSalario ? 'flex' : 'none';
     document.getElementById('campo-dossie-valor').style.display = tipo === 'Multa / Erros' ? 'flex' : 'none';
     document.getElementById('campo-dossie-dias-afastado').style.display = tipo === 'Advertência' ? 'flex' : 'none';
     document.getElementById('campo-dossie-proximo').style.display = tipo === 'Feedback' ? 'flex' : 'none';
@@ -887,7 +923,7 @@ function renderColaboradoresTable() {
       ? `<span class="badge a-vencer" title="Em período de férias hoje">Férias</span>`
       : `<button class="badge ${c.ativo ? 'ativo' : 'inativo'}" data-toggle-id="${id}" data-ativo="${c.ativo}">${c.ativo ? 'Ativo' : 'Inativo'}</button>`;
     return `
-    <tr>
+    <tr data-colab-row="${id}">
       <td><input type="checkbox" data-select-colab-id="${id}" ${selecionadosColab.has(id) ? 'checked' : ''}></td>
       <td>${c.nome}</td>
       <td>${c.areaAtuacao || '—'}</td>
@@ -898,7 +934,7 @@ function renderColaboradoresTable() {
       <td><button class="badge ${recebeVT ? 'ativo' : 'inativo'}" data-toggle-vt="${id}" data-vt="${recebeVT}">${recebeVT ? 'Recebe' : 'Não recebe'}</button></td>
       <td><span class="badge ${aso.classe}" title="${c.asoData ? 'Último ASO: ' + c.asoData : 'ASO nunca cadastrado'}">${aso.texto}</span></td>
       <td>${c.dataNascimento ? formatarDataBR(c.dataNascimento) : '—'}</td>
-      <td style="text-align:right">
+      <td style="text-align:right;white-space:nowrap">
         <button class="btn-link" data-goto-ferias="${id}" title="Ver férias">Férias</button>
         <button class="btn-link" data-goto-decimo="${id}" title="Ver 13º salário">13º</button>
         <button class="btn-link" data-goto-dossie="${id}" title="Ver dossiê">Dossiê</button>
@@ -926,6 +962,7 @@ function renderColaboradoresTable() {
       else selecionadosColab.delete(id);
       const chkAll = document.getElementById('chk-select-all-colab');
       if (chkAll) chkAll.checked = linhas.every(([lid]) => selecionadosColab.has(lid));
+      aplicarFocoColaborador();
     });
   });
   tbody.querySelectorAll('[data-toggle-id]').forEach(btn => {
@@ -961,6 +998,17 @@ function renderColaboradoresTable() {
       selecionadosColab.delete(id);
       if (editandoColaboradorId === id) cancelarEdicaoColaborador();
     });
+  });
+  aplicarFocoColaborador();
+}
+
+// Quando exatamente um colaborador estiver marcado na tabela, oculta os
+// demais (modo "foco"); com zero ou mais de um marcado, mostra todos de novo
+// (mantém o comportamento normal de seleção em lote pra V.A./V.T./rota).
+function aplicarFocoColaborador() {
+  const emFoco = selecionadosColab.size === 1 ? Array.from(selecionadosColab)[0] : null;
+  document.querySelectorAll('#colaboradores-tbody tr[data-colab-row]').forEach(tr => {
+    tr.style.display = (!emFoco || tr.dataset.colabRow === emFoco) ? '' : 'none';
   });
 }
 
@@ -1086,11 +1134,12 @@ async function criarColaborador() {
 function escutarConfig() {
   onSnapshot(doc(db, 'config', 'geral'), snap => {
     if (snap.exists()) {
-      config = { diasAlertaFerias: 360, asoPeriodicidadePadrao: 12, ...snap.data() };
+      config = { diasAlertaFerias: 360, asoPeriodicidadePadrao: 12, direitoFeriasPadrao: 30, ...snap.data() };
       document.getElementById('input-va').value = config.valorDiarioVA;
       document.getElementById('input-vt').value = config.valorDiarioVT;
       document.getElementById('input-dias-alerta-ferias').value = config.diasAlertaFerias;
       document.getElementById('input-aso-periodicidade-padrao').value = config.asoPeriodicidadePadrao;
+      document.getElementById('input-direito-ferias-padrao').value = config.direitoFeriasPadrao;
       renderLancamentoTable();
       renderFeriasTable();
       renderColaboradoresTable();
@@ -1104,7 +1153,8 @@ async function salvarConfig() {
   const valorDiarioVT = Number(document.getElementById('input-vt').value || 0);
   const diasAlertaFerias = Number(document.getElementById('input-dias-alerta-ferias').value || 360);
   const asoPeriodicidadePadrao = Number(document.getElementById('input-aso-periodicidade-padrao').value || 12);
-  await setDoc(doc(db, 'config', 'geral'), { valorDiarioVA, valorDiarioVT, diasAlertaFerias, asoPeriodicidadePadrao });
+  const direitoFeriasPadrao = Number(document.getElementById('input-direito-ferias-padrao').value || 30);
+  await setDoc(doc(db, 'config', 'geral'), { valorDiarioVA, valorDiarioVT, diasAlertaFerias, asoPeriodicidadePadrao, direitoFeriasPadrao });
   const tag = document.getElementById('config-saved');
   tag.style.display = 'inline';
   setTimeout(() => tag.style.display = 'none', 2000);
@@ -1164,6 +1214,59 @@ async function criarRota() {
   await setDoc(doc(db, 'rotas', id), { nome, valorAdicional });
   document.getElementById('input-rota-nome').value = '';
   document.getElementById('input-rota-valor').value = '';
+}
+
+// ── Cargos (usados no Dossiê, em "Mudança de cargo") ─────────────
+let cargosMap = new Map(); // id -> {nome}
+
+function escutarCargos() {
+  onSnapshot(collection(db, 'cargos'), snap => {
+    cargosMap.clear();
+    snap.forEach(d => cargosMap.set(d.id, d.data()));
+    renderCargosTable();
+    renderCargosSelects();
+  });
+}
+
+function renderCargosTable() {
+  const tbody = document.getElementById('cargos-tbody');
+  const linhas = Array.from(cargosMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
+  if (linhas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2" class="empty-msg">Nenhum cargo cadastrado ainda.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = linhas.map(([id, c]) => `
+    <tr>
+      <td>${c.nome}</td>
+      <td style="text-align:right"><button class="btn-link" data-del-cargo="${id}">Excluir</button></td>
+    </tr>
+  `).join('');
+  tbody.querySelectorAll('[data-del-cargo]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Excluir o cargo "${cargosMap.get(btn.dataset.delCargo)?.nome}"?`)) return;
+      await deleteDoc(doc(db, 'cargos', btn.dataset.delCargo));
+    });
+  });
+}
+
+function renderCargosSelects() {
+  const linhas = Array.from(cargosMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
+  const options = '<option value="">Selecione...</option>' +
+    linhas.map(([, c]) => `<option value="${c.nome}">${c.nome}</option>`).join('');
+  for (const selectId of ['input-dossie-cargo-de', 'input-dossie-cargo-para']) {
+    const select = document.getElementById(selectId);
+    const valorAtual = select.value;
+    select.innerHTML = options;
+    select.value = valorAtual;
+  }
+}
+
+async function criarCargo() {
+  const nome = document.getElementById('input-cargo-nome').value.trim();
+  if (!nome) { alert('Informe o nome do cargo.'); return; }
+  const id = 'cg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  await setDoc(doc(db, 'cargos', id), { nome });
+  document.getElementById('input-cargo-nome').value = '';
 }
 
 // ── Lançamento mensal ───────────────────────────────────────────
@@ -1799,7 +1902,7 @@ function cancelarEdicaoPeriodoFerias() {
   document.getElementById('input-periodo-gozada-inicio').value = '';
   document.getElementById('input-periodo-gozada-fim').value = '';
   document.getElementById('input-periodo-retorno').value = '';
-  document.getElementById('input-periodo-direito').value = '30';
+  document.getElementById('input-periodo-direito').value = config.direitoFeriasPadrao ?? 30;
   document.getElementById('input-periodo-dias-gozados').value = '0';
   document.getElementById('input-periodo-observacoes').value = '';
   document.getElementById('btn-add-periodo').textContent = 'Adicionar período';
@@ -1813,7 +1916,7 @@ async function criarPeriodoFerias() {
   const gozadaInicio = document.getElementById('input-periodo-gozada-inicio').value || null;
   const gozadaFim = document.getElementById('input-periodo-gozada-fim').value || null;
   const retorno = document.getElementById('input-periodo-retorno').value || null;
-  const direito = Number(document.getElementById('input-periodo-direito').value || 30);
+  const direito = Number(document.getElementById('input-periodo-direito').value || config.direitoFeriasPadrao || 30);
   const diasGozados = Number(document.getElementById('input-periodo-dias-gozados').value || 0);
   const observacoes = document.getElementById('input-periodo-observacoes').value.trim() || null;
   if (!limite) { alert('Informe ao menos a data limite.'); return; }
@@ -1828,7 +1931,7 @@ async function criarPeriodoFerias() {
   document.getElementById('input-periodo-gozada-inicio').value = '';
   document.getElementById('input-periodo-gozada-fim').value = '';
   document.getElementById('input-periodo-retorno').value = '';
-  document.getElementById('input-periodo-direito').value = '30';
+  document.getElementById('input-periodo-direito').value = config.direitoFeriasPadrao ?? 30;
   document.getElementById('input-periodo-dias-gozados').value = '0';
   document.getElementById('input-periodo-observacoes').value = '';
   sugerirProximoLimiteFerias();
@@ -1915,12 +2018,16 @@ async function criarRegistroDossie() {
   const colaboradorId = document.getElementById('select-dossie-colaborador').value;
   const data = document.getElementById('input-dossie-data').value;
   const tipo = document.getElementById('input-dossie-tipo').value;
-  const ehMudanca = tipo === 'Mudança de cargo' || tipo === 'Mudança de salário';
+  const ehMudancaCargo = tipo === 'Mudança de cargo';
+  const ehMudancaSalario = tipo === 'Mudança de salário';
+  const ehMudanca = ehMudancaCargo || ehMudancaSalario;
   const ehMulta = tipo === 'Multa / Erros';
   const ehAdvertencia = tipo === 'Advertência';
   const ehFeedback = tipo === 'Feedback';
-  const de = document.getElementById('input-dossie-de').value.trim();
-  const para = document.getElementById('input-dossie-para').value.trim();
+  const cargoDe = document.getElementById('input-dossie-cargo-de').value;
+  const cargoPara = document.getElementById('input-dossie-cargo-para').value;
+  const de = ehMudancaCargo ? cargoDe : document.getElementById('input-dossie-de').value.trim();
+  const para = ehMudancaCargo ? cargoPara : document.getElementById('input-dossie-para').value.trim();
   const valor = ehMulta ? Number(document.getElementById('input-dossie-valor').value || 0) : null;
   const diasAfastado = ehAdvertencia ? Number(document.getElementById('input-dossie-dias-afastado').value || 0) : null;
   const proximo = ehFeedback ? (document.getElementById('input-dossie-proximo').value || null) : null;
@@ -1932,7 +2039,7 @@ async function criarRegistroDossie() {
 
   if (!colaboradorId) { alert('Selecione um colaborador primeiro.'); return; }
   if (!data) { alert('Data é obrigatória.'); return; }
-  if (ehMudanca && (!de || !para)) { alert('Informe o valor anterior e o valor novo.'); return; }
+  if (ehMudanca && (!de || !para)) { alert('Informe o valor/cargo anterior e o novo.'); return; }
   if (!ehMudanca && !document.getElementById('input-dossie-descricao').value.trim()) { alert('Descrição é obrigatória.'); return; }
 
   const btn = document.getElementById('btn-add-dossie');
@@ -1954,6 +2061,8 @@ async function criarRegistroDossie() {
     document.getElementById('input-dossie-descricao').value = '';
     document.getElementById('input-dossie-de').value = '';
     document.getElementById('input-dossie-para').value = '';
+    document.getElementById('input-dossie-cargo-de').value = '';
+    document.getElementById('input-dossie-cargo-para').value = '';
     document.getElementById('input-dossie-valor').value = '';
     document.getElementById('input-dossie-dias-afastado').value = '0';
     document.getElementById('input-dossie-proximo').value = '';
