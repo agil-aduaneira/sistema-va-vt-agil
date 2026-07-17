@@ -376,9 +376,10 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <input type="number" step="0.01" id="input-rota-valor">
       </div>
       <button class="btn btn-primary" id="btn-add-rota">Adicionar rota</button>
+      <button class="btn btn-dark" id="btn-cancelar-rota" style="display:none">Cancelar</button>
     </div>
 
-    <div class="card" style="padding:0;overflow-x:auto">
+    <div class="card table-scroll" style="padding:0">
       <table>
         <thead><tr><th>Rota</th><th>Valor adicional / dia</th><th></th></tr></thead>
         <tbody id="rotas-tbody"></tbody>
@@ -397,7 +398,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       <button class="btn btn-dark" id="btn-cancelar-cargo" style="display:none">Cancelar</button>
     </div>
 
-    <div class="card" style="padding:0;overflow-x:auto">
+    <div class="card table-scroll" style="padding:0">
       <table>
         <thead><tr><th>Cargo</th><th></th></tr></thead>
         <tbody id="cargos-tbody"></tbody>
@@ -604,6 +605,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <input type="file" id="input-dossie-anexo" accept=".pdf,.jpg,.jpeg,.png">
       </div>
       <button class="btn btn-primary" id="btn-add-dossie">Adicionar registro</button>
+      <button class="btn btn-dark" id="btn-cancelar-dossie" style="display:none">Cancelar</button>
     </div>
 
     <div class="card" style="padding:0;overflow-x:auto">
@@ -899,6 +901,7 @@ function iniciarApp() {
   document.getElementById('toggle-form-va').addEventListener('click', (e) => alternarBadgeForm(e.target));
   document.getElementById('toggle-form-vt').addEventListener('click', (e) => alternarBadgeForm(e.target));
   document.getElementById('btn-add-rota').addEventListener('click', criarRota);
+  document.getElementById('btn-cancelar-rota').addEventListener('click', cancelarEdicaoRota);
   document.getElementById('btn-add-cargo').addEventListener('click', criarCargo);
   document.getElementById('btn-cancelar-cargo').addEventListener('click', cancelarEdicaoCargo);
 
@@ -996,6 +999,7 @@ function iniciarApp() {
     document.getElementById('label-dossie-data').textContent = ehMudanca ? 'A partir de' : 'Data';
   });
   document.getElementById('btn-add-dossie').addEventListener('click', criarRegistroDossie);
+  document.getElementById('btn-cancelar-dossie').addEventListener('click', cancelarEdicaoDossie);
 }
 
 function alternarBadgeForm(btn) {
@@ -1360,14 +1364,21 @@ function renderRotasTable() {
     <tr>
       <td>${r.nome}</td>
       <td>${formatBRL(r.valorAdicional)}</td>
-      <td style="text-align:right"><button class="btn-link" data-del-rota="${id}">Excluir</button></td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn-link" style="color:var(--blue)" data-edit-rota="${id}">Editar</button>
+        <button class="btn-link" data-del-rota="${id}">Excluir</button>
+      </td>
     </tr>
   `).join('');
+  tbody.querySelectorAll('[data-edit-rota]').forEach(btn => {
+    btn.addEventListener('click', () => iniciarEdicaoRota(btn.dataset.editRota));
+  });
   tbody.querySelectorAll('[data-del-rota]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.delRota;
       if (!confirm(`Excluir a rota "${rotasMap.get(id)?.nome}"? Colaboradores que usam essa rota voltam a usar o V.T. normal.`)) return;
       await deleteDoc(doc(db, 'rotas', id));
+      if (editandoRotaId === id) cancelarEdicaoRota();
     });
   });
 }
@@ -1384,10 +1395,35 @@ function renderRotasSelects() {
   }
 }
 
+let editandoRotaId = null;
+
+function iniciarEdicaoRota(id) {
+  const r = rotasMap.get(id);
+  if (!r) return;
+  editandoRotaId = id;
+  document.getElementById('input-rota-nome').value = r.nome;
+  document.getElementById('input-rota-valor').value = r.valorAdicional;
+  document.getElementById('btn-add-rota').textContent = 'Salvar alterações';
+  document.getElementById('btn-cancelar-rota').style.display = 'inline-block';
+}
+
+function cancelarEdicaoRota() {
+  editandoRotaId = null;
+  document.getElementById('input-rota-nome').value = '';
+  document.getElementById('input-rota-valor').value = '';
+  document.getElementById('btn-add-rota').textContent = 'Adicionar rota';
+  document.getElementById('btn-cancelar-rota').style.display = 'none';
+}
+
 async function criarRota() {
   const nome = document.getElementById('input-rota-nome').value.trim();
   const valorAdicional = Number(document.getElementById('input-rota-valor').value || 0);
   if (!nome || !valorAdicional) { alert('Nome da rota e valor adicional são obrigatórios.'); return; }
+  if (editandoRotaId) {
+    await updateDoc(doc(db, 'rotas', editandoRotaId), { nome, valorAdicional });
+    cancelarEdicaoRota();
+    return;
+  }
   const id = 'r_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   await setDoc(doc(db, 'rotas', id), { nome, valorAdicional });
   document.getElementById('input-rota-nome').value = '';
@@ -2230,15 +2266,66 @@ function renderDossieTable() {
       <td>${e.tipo}</td>
       <td>${e.descricao || ''}${e.proximo ? ` <span class="badge a-vencer" title="Próximo contato agendado">Próximo: ${formatarDataBR(e.proximo)}</span>` : ''}</td>
       <td>${e.anexoUrl ? `<a href="${e.anexoUrl}" target="_blank" rel="noopener">Ver arquivo</a>` : '—'}</td>
-      <td style="text-align:right"><button class="btn-link" data-del-dossie="${e.id}">Excluir</button></td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn-link" style="color:var(--blue)" data-edit-dossie="${e.id}">Editar</button>
+        <button class="btn-link" data-del-dossie="${e.id}">Excluir</button>
+      </td>
     </tr>
   `).join('');
+  tbody.querySelectorAll('[data-edit-dossie]').forEach(btn => {
+    btn.addEventListener('click', () => iniciarEdicaoDossie(btn.dataset.editDossie));
+  });
   tbody.querySelectorAll('[data-del-dossie]').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('Excluir este registro do dossiê?')) return;
       await deleteDoc(doc(db, 'dossie', btn.dataset.delDossie));
+      if (editandoDossieId === btn.dataset.delDossie) cancelarEdicaoDossie();
     });
   });
+}
+
+let editandoDossieId = null;
+
+function iniciarEdicaoDossie(id) {
+  const e = dossieEventos.get(id);
+  if (!e) return;
+  editandoDossieId = id;
+  document.getElementById('input-dossie-data').value = e.data || '';
+  document.getElementById('input-dossie-tipo').value = e.tipo;
+  document.getElementById('input-dossie-tipo').dispatchEvent(new Event('change'));
+  const ehMudancaCargo = e.tipo === 'Mudança de cargo';
+  const ehMudancaSalario = e.tipo === 'Mudança de salário';
+  if (ehMudancaCargo) {
+    document.getElementById('input-dossie-cargo-de').value = e.de || '';
+    document.getElementById('input-dossie-cargo-para').value = e.para || '';
+  } else if (ehMudancaSalario) {
+    document.getElementById('input-dossie-de').value = e.de || '';
+    document.getElementById('input-dossie-para').value = e.para || '';
+  } else {
+    document.getElementById('input-dossie-descricao').value = e.descricaoDigitada ?? e.descricao ?? '';
+  }
+  document.getElementById('input-dossie-valor').value = e.tipo === 'Multa / Erros' ? (e.valor || '') : '';
+  document.getElementById('input-dossie-dias-afastado').value = e.tipo === 'Advertência' ? (e.diasAfastado || 0) : '0';
+  document.getElementById('input-dossie-proximo').value = e.tipo === 'Feedback' ? (e.proximo || '') : '';
+  document.getElementById('input-dossie-anexo').value = '';
+  document.getElementById('btn-add-dossie').textContent = 'Salvar alterações';
+  document.getElementById('btn-cancelar-dossie').style.display = 'inline-block';
+}
+
+function cancelarEdicaoDossie() {
+  editandoDossieId = null;
+  document.getElementById('input-dossie-data').value = '';
+  document.getElementById('input-dossie-descricao').value = '';
+  document.getElementById('input-dossie-de').value = '';
+  document.getElementById('input-dossie-para').value = '';
+  document.getElementById('input-dossie-cargo-de').value = '';
+  document.getElementById('input-dossie-cargo-para').value = '';
+  document.getElementById('input-dossie-valor').value = '';
+  document.getElementById('input-dossie-dias-afastado').value = '0';
+  document.getElementById('input-dossie-proximo').value = '';
+  document.getElementById('input-dossie-anexo').value = '';
+  document.getElementById('btn-add-dossie').textContent = 'Adicionar registro';
+  document.getElementById('btn-cancelar-dossie').style.display = 'none';
 }
 
 async function criarRegistroDossie() {
@@ -2258,7 +2345,8 @@ async function criarRegistroDossie() {
   const valor = ehMulta ? Number(document.getElementById('input-dossie-valor').value || 0) : null;
   const diasAfastado = ehAdvertencia ? Number(document.getElementById('input-dossie-dias-afastado').value || 0) : null;
   const proximo = ehFeedback ? (document.getElementById('input-dossie-proximo').value || null) : null;
-  let descricao = ehMudanca ? `De: ${de} → Para: ${para}` : document.getElementById('input-dossie-descricao').value.trim();
+  const descricaoDigitada = ehMudanca ? null : document.getElementById('input-dossie-descricao').value.trim();
+  let descricao = ehMudanca ? `De: ${de} → Para: ${para}` : descricaoDigitada;
   if (ehMulta && valor) descricao += ` — Valor: ${formatBRL(valor)}`;
   if (ehAdvertencia && diasAfastado > 0) descricao += ` — ${diasAfastado} dia(s) afastado`;
   const arquivoInput = document.getElementById('input-dossie-anexo');
@@ -2267,14 +2355,17 @@ async function criarRegistroDossie() {
   if (!colaboradorId) { alert('Selecione um colaborador primeiro.'); return; }
   if (!data) { alert('Data é obrigatória.'); return; }
   if (ehMudanca && (!de || !para)) { alert('Informe o valor/cargo anterior e o novo.'); return; }
-  if (!ehMudanca && !document.getElementById('input-dossie-descricao').value.trim()) { alert('Descrição é obrigatória.'); return; }
+  if (!ehMudanca && !descricaoDigitada) { alert('Descrição é obrigatória.'); return; }
 
   const btn = document.getElementById('btn-add-dossie');
+  const textoOriginalBtn = editandoDossieId ? 'Salvar alterações' : 'Adicionar registro';
   btn.disabled = true;
   btn.textContent = 'Salvando...';
 
   try {
-    let anexoUrl = null;
+    // Ao editar, sem escolher um novo arquivo, mantém o anexo que já existia
+    // (não dá pra pré-carregar um <input type="file"> por segurança do navegador).
+    let anexoUrl = editandoDossieId ? (dossieEventos.get(editandoDossieId)?.anexoUrl ?? null) : null;
     if ((tipo === 'Atestado' || tipo === 'Feedback') && arquivo) {
       const caminho = `dossie/${colaboradorId}/${Date.now()}_${arquivo.name}`;
       const storageRef = ref(storage, caminho);
@@ -2282,23 +2373,19 @@ async function criarRegistroDossie() {
       anexoUrl = await getDownloadURL(storageRef);
     }
 
-    await setDoc(doc(collection(db, 'dossie')), { colaboradorId, data, tipo, descricao, anexoUrl, valor, diasAfastado, proximo });
+    const payload = { colaboradorId, data, tipo, descricao, descricaoDigitada, de, para, anexoUrl, valor, diasAfastado, proximo };
+    if (editandoDossieId) {
+      await updateDoc(doc(db, 'dossie', editandoDossieId), payload);
+    } else {
+      await setDoc(doc(collection(db, 'dossie')), payload);
+    }
 
-    document.getElementById('input-dossie-data').value = '';
-    document.getElementById('input-dossie-descricao').value = '';
-    document.getElementById('input-dossie-de').value = '';
-    document.getElementById('input-dossie-para').value = '';
-    document.getElementById('input-dossie-cargo-de').value = '';
-    document.getElementById('input-dossie-cargo-para').value = '';
-    document.getElementById('input-dossie-valor').value = '';
-    document.getElementById('input-dossie-dias-afastado').value = '0';
-    document.getElementById('input-dossie-proximo').value = '';
-    arquivoInput.value = '';
+    cancelarEdicaoDossie();
   } catch (err) {
     alert('Erro ao salvar (se for anexo, o Storage do Firebase pode ainda não estar ativado): ' + err.message);
+    btn.textContent = textoOriginalBtn;
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Adicionar registro';
   }
 }
 
