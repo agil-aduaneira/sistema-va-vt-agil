@@ -623,40 +623,27 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
 
     <h1 style="margin-top:24px">Férias</h1>
     <div class="card form-row">
-      <div class="field" style="min-width:200px">
+      <button class="btn btn-primary" id="btn-rel-ferias-colaborador" data-filtro-ferias="colaborador">Por Colaborador</button>
+      <button class="btn btn-dark" id="btn-rel-ferias-periodo" data-filtro-ferias="periodo">Por Período</button>
+      <button class="btn btn-dark" id="btn-rel-ferias-a-vencer" data-filtro-ferias="a-vencer">A Vencer</button>
+    </div>
+    <div class="card form-row" id="rel-ferias-filtro-colaborador-row">
+      <div class="field" style="flex:1;min-width:220px">
         <label>Colaborador</label>
-        <select id="rel-ferias-colaborador"><option value="">Todos</option></select>
-      </div>
-      <div class="field" style="min-width:160px">
-        <label>Cargo</label>
-        <select id="rel-ferias-setor">
-          <option value="">Todos</option>
-        </select>
-      </div>
-      <div class="field" style="min-width:160px">
-        <label>Situação</label>
-        <select id="rel-ferias-status">
-          <option value="">Todas</option>
-          <option value="vencido">Vencidas</option>
-          <option value="a-vencer">A vencer</option>
-          <option value="ativo">Em dia</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Limite de</label>
-        <input type="date" id="rel-ferias-de">
-      </div>
-      <div class="field">
-        <label>Limite até</label>
-        <input type="date" id="rel-ferias-ate">
+        <select id="rel-ferias-colaborador"><option value="">Selecione...</option></select>
       </div>
     </div>
-    <div class="card table-scroll" style="padding:0">
-      <table>
-        <thead><tr><th>Colaborador</th><th>Cargo</th><th>Admissão</th><th>Período Aquisitivo</th><th>Limite</th><th>Situação</th></tr></thead>
-        <tbody id="rel-ferias-tbody"></tbody>
-      </table>
+    <div class="card form-row" id="rel-ferias-filtro-periodo-row" style="display:none">
+      <div class="field">
+        <label>De</label>
+        <input type="date" id="rel-ferias-periodo-de">
+      </div>
+      <div class="field">
+        <label>Até</label>
+        <input type="date" id="rel-ferias-periodo-ate">
+      </div>
     </div>
+    <div id="rel-ferias-container"></div>
 
     <h1 style="margin-top:36px">13º Salário</h1>
     <div class="subtitle">Do ano vigente selecionado na aba "13º Salário".</div>
@@ -905,7 +892,10 @@ function iniciarApp() {
   document.getElementById('btn-add-cargo').addEventListener('click', criarCargo);
   document.getElementById('btn-cancelar-cargo').addEventListener('click', cancelarEdicaoCargo);
 
-  for (const id of ['rel-ferias-colaborador', 'rel-ferias-setor', 'rel-ferias-status', 'rel-ferias-de', 'rel-ferias-ate']) {
+  document.querySelectorAll('[data-filtro-ferias]').forEach(btn => {
+    btn.addEventListener('click', () => selecionarFiltroFerias(btn.dataset.filtroFerias));
+  });
+  for (const id of ['rel-ferias-colaborador', 'rel-ferias-periodo-de', 'rel-ferias-periodo-ate']) {
     document.getElementById(id).addEventListener('change', renderRelatorioFerias);
   }
   document.getElementById('rel-decimo-setor').addEventListener('change', renderRelatorioDecimo);
@@ -1479,7 +1469,7 @@ function renderCargosSelects() {
     select.innerHTML = '<option value="">Selecione...</option>' + optionsCargos;
     select.value = valorAtual;
   }
-  for (const selectId of ['rel-ferias-setor', 'rel-decimo-setor']) {
+  for (const selectId of ['rel-decimo-setor']) {
     const select = document.getElementById(selectId);
     const valorAtual = select.value;
     select.innerHTML = '<option value="">Todos</option>' + optionsCargos;
@@ -2392,55 +2382,124 @@ async function criarRegistroDossie() {
 // ── Relatórios ──────────────────────────────────────────────────
 function renderSelectRelatorios() {
   const linhas = Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
-  const optionsTodos = '<option value="">Todos</option>' +
-    linhas.map(([id, c]) => `<option value="${id}">${c.nome}</option>`).join('');
-  for (const selectId of ['rel-ferias-colaborador', 'rel-dossie-colaborador']) {
-    const select = document.getElementById(selectId);
-    const valorAtual = select.value;
-    select.innerHTML = optionsTodos;
-    select.value = valorAtual;
-  }
+  const options = linhas.map(([id, c]) => `<option value="${id}">${c.nome}</option>`).join('');
+  const select1 = document.getElementById('rel-ferias-colaborador');
+  const valorAtual1 = select1.value;
+  select1.innerHTML = '<option value="">Selecione...</option>' + options;
+  select1.value = valorAtual1;
+  const select2 = document.getElementById('rel-dossie-colaborador');
+  const valorAtual2 = select2.value;
+  select2.innerHTML = '<option value="">Todos</option>' + options;
+  select2.value = valorAtual2;
+}
+
+// Relatório de Férias — segue fielmente os 3 modelos que o Sidney mandou
+// (Filtro Colaborador/Período/A Vencer): um bloco por colaborador (Nome/
+// Admissão/Cargo) com a tabela de períodos dele, não uma tabela única.
+let filtroFeriasRelatorio = 'colaborador'; // 'colaborador' | 'periodo' | 'a-vencer'
+
+function selecionarFiltroFerias(filtro) {
+  filtroFeriasRelatorio = filtro;
+  document.querySelectorAll('[data-filtro-ferias]').forEach(btn => {
+    const ativo = btn.dataset.filtroFerias === filtro;
+    btn.classList.toggle('btn-primary', ativo);
+    btn.classList.toggle('btn-dark', !ativo);
+  });
+  document.getElementById('rel-ferias-filtro-colaborador-row').style.display = filtro === 'colaborador' ? 'flex' : 'none';
+  document.getElementById('rel-ferias-filtro-periodo-row').style.display = filtro === 'periodo' ? 'flex' : 'none';
+  renderRelatorioFerias();
+}
+
+// Todos os períodos de um colaborador, numerados em ordem cronológica (1ª,
+// 2ª...) com o período aquisitivo já calculado -- mesma base usada nos 3
+// filtros, pra não recalcular a numeração/aquisitivo em cada um deles.
+function feriasNumeradas(colaboradorId, colaborador) {
+  const periodos = (todasFeriasMap.get(colaboradorId) || []).slice()
+    .sort((a, b) => (a.limite || '').localeCompare(b.limite || ''));
+  return periodos.map((p, i) => ({
+    p,
+    numero: i + 1,
+    aquisitivo: colaborador.dataAdmissao ? calcularPeriodoAquisitivoFerias(colaborador.dataAdmissao, i + 1) : null,
+  }));
+}
+
+// Período pendente (ainda não gozado) mais próximo do vencimento; se não
+// houver nenhum cadastrado, sintetiza o próximo (mesma regra do formulário).
+function entradaAVencerColaborador(colaboradorId, colaborador) {
+  const numeradas = feriasNumeradas(colaboradorId, colaborador);
+  const pendente = numeradas.filter(e => !e.p.gozadaInicio)
+    .sort((a, b) => (a.p.limite || '').localeCompare(b.p.limite || ''))[0];
+  if (pendente) return pendente;
+  const numeroProximo = numeradas.length + 1;
+  return {
+    p: { limite: calcularLimiteFerias(colaborador.dataAdmissao, numeroProximo), gozadaInicio: null, gozadaFim: null, retorno: null, diasGozados: null },
+    numero: numeroProximo,
+    aquisitivo: calcularPeriodoAquisitivoFerias(colaborador.dataAdmissao, numeroProximo),
+  };
+}
+
+function renderBlocoColaboradorFerias(colaborador, entradas) {
+  const linhas = entradas.map(({ p, numero, aquisitivo }) => `
+    <tr>
+      <td>${numero}ª</td>
+      <td>${aquisitivo ? `${formatarDataBR(aquisitivo.inicio)} a ${formatarDataBR(aquisitivo.fim)}` : '—'}</td>
+      <td>${p.limite ? formatarDataBR(p.limite) : '—'}</td>
+      <td>${p.gozadaInicio ? formatarDataBR(p.gozadaInicio) : '—'}</td>
+      <td>${p.gozadaFim ? formatarDataBR(p.gozadaFim) : '—'}</td>
+      <td>${p.retorno ? formatarDataBR(p.retorno) : '—'}</td>
+      <td>${p.diasGozados ?? '—'}</td>
+      <td>—</td>
+    </tr>
+  `).join('');
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <div class="form-row">
+        <div class="field" style="flex:1;min-width:200px"><label>Colaborador</label><div>${colaborador.nome}</div></div>
+        <div class="field"><label>Admissão</label><div>${formatarDataBR(colaborador.dataAdmissao)}</div></div>
+        <div class="field"><label>Cargo</label><div>${colaborador.areaAtuacao || '—'}</div></div>
+      </div>
+      <table style="margin-top:10px">
+        <thead><tr><th>#</th><th>Período Aquisitivo</th><th>Limite até</th><th>Início férias</th><th>Término férias</th><th>Retorno</th><th>Dias Gozados</th><th>Dias Vendidos</th></tr></thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>
+  `;
 }
 
 function renderRelatorioFerias() {
-  const tbody = document.getElementById('rel-ferias-tbody');
-  if (!tbody) return;
-  const filtroColaborador = document.getElementById('rel-ferias-colaborador').value;
-  const filtroSetor = document.getElementById('rel-ferias-setor').value;
-  const filtroStatus = document.getElementById('rel-ferias-status').value;
-  const filtroDe = document.getElementById('rel-ferias-de').value;
-  const filtroAte = document.getElementById('rel-ferias-ate').value;
+  const container = document.getElementById('rel-ferias-container');
+  if (!container) return;
 
-  const linhas = Array.from(colaboradoresMap.entries())
-    .filter(([id, c]) => c.ativo && c.dataAdmissao)
-    .filter(([id]) => !filtroColaborador || id === filtroColaborador)
-    .filter(([, c]) => !filtroSetor || c.areaAtuacao === filtroSetor)
-    .map(([id, c]) => {
-      const numeroProximo = (todasFeriasMap.get(id) || []).length + 1;
-      const limite = proximoLimiteFeriasColaborador(id, c);
-      const aquisitivo = calcularPeriodoAquisitivoFerias(c.dataAdmissao, numeroProximo);
-      const alerta = limite ? calcularAlertaFerias({ limite, gozadaInicio: null }) : { texto: '—', classe: 'inativo' };
-      return { id, c, limite, aquisitivo, alerta };
-    })
-    .filter(l => !filtroStatus || l.alerta.classe === filtroStatus)
-    .filter(l => !filtroDe || !l.limite || l.limite >= filtroDe)
-    .filter(l => !filtroAte || !l.limite || l.limite <= filtroAte)
-    .sort((a, b) => (a.limite || '').localeCompare(b.limite || ''));
-
-  if (linhas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Nenhum resultado para os filtros selecionados.</td></tr>';
+  if (filtroFeriasRelatorio === 'colaborador') {
+    const colaboradorId = document.getElementById('rel-ferias-colaborador').value;
+    const c = colaboradorId ? colaboradoresMap.get(colaboradorId) : null;
+    if (!c) { container.innerHTML = '<div class="card empty-msg">Selecione um colaborador.</div>'; return; }
+    if (!c.dataAdmissao) { container.innerHTML = '<div class="card empty-msg">Colaborador sem data de admissão cadastrada.</div>'; return; }
+    container.innerHTML = renderBlocoColaboradorFerias(c, feriasNumeradas(colaboradorId, c));
     return;
   }
-  tbody.innerHTML = linhas.map(({ c, limite, aquisitivo, alerta }) => `
-    <tr>
-      <td>${c.nome}</td>
-      <td>${c.areaAtuacao || '—'}</td>
-      <td>${formatarDataBR(c.dataAdmissao)}</td>
-      <td>${formatarDataBR(aquisitivo.inicio)} a ${formatarDataBR(aquisitivo.fim)}</td>
-      <td>${limite ? formatarDataBR(limite) : '—'}</td>
-      <td><span class="badge ${alerta.classe}">${alerta.texto}</span></td>
-    </tr>
-  `).join('');
+
+  if (filtroFeriasRelatorio === 'periodo') {
+    const de = document.getElementById('rel-ferias-periodo-de').value;
+    const ate = document.getElementById('rel-ferias-periodo-ate').value;
+    if (!de || !ate) { container.innerHTML = '<div class="card empty-msg">Informe o período (de/até).</div>'; return; }
+    const blocos = [];
+    for (const [id, c] of Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome))) {
+      if (!c.dataAdmissao) continue;
+      const filtradas = feriasNumeradas(id, c).filter(({ aquisitivo }) => aquisitivo && aquisitivo.inicio <= ate && aquisitivo.fim >= de);
+      if (filtradas.length) blocos.push(renderBlocoColaboradorFerias(c, filtradas));
+    }
+    container.innerHTML = blocos.length ? blocos.join('') : '<div class="card empty-msg">Nenhum período encontrado nesse intervalo.</div>';
+    return;
+  }
+
+  // 'a-vencer': um bloco por colaborador ativo, só com o período pendente.
+  const blocos = [];
+  for (const [id, c] of Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome))) {
+    if (!c.ativo || !c.dataAdmissao) continue;
+    blocos.push(renderBlocoColaboradorFerias(c, [entradaAVencerColaborador(id, c)]));
+  }
+  container.innerHTML = blocos.length ? blocos.join('') : '<div class="card empty-msg">Nenhum colaborador ativo com admissão cadastrada.</div>';
 }
 
 function renderRelatorioDecimo() {
