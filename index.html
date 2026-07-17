@@ -314,6 +314,13 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       <button class="btn btn-dark" id="btn-bulk-rota">Aplicar aos marcados</button>
     </div>
 
+    <div class="card form-row">
+      <div class="field" style="flex:1">
+        <label>Filtrar por nome</label>
+        <input type="text" id="input-filtro-colab" placeholder="Digite parte do nome...">
+      </div>
+    </div>
+
     <div class="card table-scroll" id="painel-tabela-colab" style="padding:0">
       <table>
         <thead>
@@ -913,6 +920,10 @@ function iniciarApp() {
     document.getElementById(id).addEventListener('change', renderRelatorioDossie);
   }
 
+  document.getElementById('input-filtro-colab').addEventListener('input', (e) => {
+    filtroNomeColab = e.target.value;
+    aplicarFocoColaborador();
+  });
   document.getElementById('chk-select-all-colab').addEventListener('change', (e) => {
     const marcarTodos = e.target.checked;
     selecionadosColab.clear();
@@ -1139,10 +1150,19 @@ function renderColaboradoresTable() {
 // Quando exatamente um colaborador estiver marcado na tabela, oculta os
 // demais (modo "foco"); com zero ou mais de um marcado, mostra todos de novo
 // (mantém o comportamento normal de seleção em lote pra V.A./V.T./rota).
+// Combinado com o filtro por nome (input-filtro-colab): uma linha só fica
+// visível se passar nos dois critérios ao mesmo tempo.
+let filtroNomeColab = '';
+
 function aplicarFocoColaborador() {
   const emFoco = selecionadosColab.size === 1 ? Array.from(selecionadosColab)[0] : null;
+  const termo = filtroNomeColab.trim().toLowerCase();
   document.querySelectorAll('#colaboradores-tbody tr[data-colab-row]').forEach(tr => {
-    tr.style.display = (!emFoco || tr.dataset.colabRow === emFoco) ? '' : 'none';
+    const id = tr.dataset.colabRow;
+    const passaFoco = !emFoco || id === emFoco;
+    const nome = (colaboradoresMap.get(id)?.nome || '').toLowerCase();
+    const passaFiltro = !termo || nome.includes(termo);
+    tr.style.display = (passaFoco && passaFiltro) ? '' : 'none';
   });
 
   // Preenche o formulário do topo com os dados do colaborador em foco, pra
