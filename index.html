@@ -648,19 +648,27 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
     <h1 style="margin-top:36px">13º Salário</h1>
     <div class="subtitle">Do ano vigente selecionado na aba "13º Salário".</div>
     <div class="card form-row">
-      <div class="field" style="min-width:160px">
-        <label>Cargo</label>
-        <select id="rel-decimo-setor">
-          <option value="">Todos</option>
-        </select>
+      <button class="btn btn-primary" id="btn-rel-decimo-colaborador" data-filtro-decimo="colaborador">Por Colaborador</button>
+      <button class="btn btn-dark" id="btn-rel-decimo-geral" data-filtro-decimo="geral">Geral</button>
+      <button class="btn btn-dark" id="btn-rel-decimo-periodo" data-filtro-decimo="periodo">Por Período</button>
+    </div>
+    <div class="card form-row" id="rel-decimo-filtro-colaborador-row">
+      <div class="field" style="flex:1;min-width:220px">
+        <label>Colaborador</label>
+        <select id="rel-decimo-colaborador"><option value="">Selecione...</option></select>
       </div>
     </div>
-    <div class="card table-scroll" style="padding:0">
-      <table>
-        <thead><tr><th>Colaborador</th><th>Cargo</th><th>Valor 1ª parcela</th><th>Data 1ª parcela</th><th>Valor 2ª parcela</th><th>Data 2ª parcela</th></tr></thead>
-        <tbody id="rel-decimo-tbody"></tbody>
-      </table>
+    <div class="card form-row" id="rel-decimo-filtro-periodo-row" style="display:none">
+      <div class="field">
+        <label>De</label>
+        <input type="date" id="rel-decimo-periodo-de">
+      </div>
+      <div class="field">
+        <label>Até</label>
+        <input type="date" id="rel-decimo-periodo-ate">
+      </div>
     </div>
+    <div id="rel-decimo-container"></div>
 
     <h1 style="margin-top:36px">Dossiê</h1>
     <div class="card form-row">
@@ -898,7 +906,12 @@ function iniciarApp() {
   for (const id of ['rel-ferias-colaborador', 'rel-ferias-periodo-de', 'rel-ferias-periodo-ate']) {
     document.getElementById(id).addEventListener('change', renderRelatorioFerias);
   }
-  document.getElementById('rel-decimo-setor').addEventListener('change', renderRelatorioDecimo);
+  document.querySelectorAll('[data-filtro-decimo]').forEach(btn => {
+    btn.addEventListener('click', () => selecionarFiltroDecimo(btn.dataset.filtroDecimo));
+  });
+  for (const id of ['rel-decimo-colaborador', 'rel-decimo-periodo-de', 'rel-decimo-periodo-ate']) {
+    document.getElementById(id).addEventListener('change', renderRelatorioDecimo);
+  }
   for (const id of ['rel-dossie-colaborador', 'rel-dossie-tipo', 'rel-dossie-de', 'rel-dossie-ate']) {
     document.getElementById(id).addEventListener('change', renderRelatorioDossie);
   }
@@ -1467,12 +1480,6 @@ function renderCargosSelects() {
     const select = document.getElementById(selectId);
     const valorAtual = select.value;
     select.innerHTML = '<option value="">Selecione...</option>' + optionsCargos;
-    select.value = valorAtual;
-  }
-  for (const selectId of ['rel-decimo-setor']) {
-    const select = document.getElementById(selectId);
-    const valorAtual = select.value;
-    select.innerHTML = '<option value="">Todos</option>' + optionsCargos;
     select.value = valorAtual;
   }
 }
@@ -2383,14 +2390,16 @@ async function criarRegistroDossie() {
 function renderSelectRelatorios() {
   const linhas = Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
   const options = linhas.map(([id, c]) => `<option value="${id}">${c.nome}</option>`).join('');
-  const select1 = document.getElementById('rel-ferias-colaborador');
-  const valorAtual1 = select1.value;
-  select1.innerHTML = '<option value="">Selecione...</option>' + options;
-  select1.value = valorAtual1;
-  const select2 = document.getElementById('rel-dossie-colaborador');
-  const valorAtual2 = select2.value;
-  select2.innerHTML = '<option value="">Todos</option>' + options;
-  select2.value = valorAtual2;
+  for (const selectId of ['rel-ferias-colaborador', 'rel-decimo-colaborador']) {
+    const select = document.getElementById(selectId);
+    const valorAtual = select.value;
+    select.innerHTML = '<option value="">Selecione...</option>' + options;
+    select.value = valorAtual;
+  }
+  const selectDossie = document.getElementById('rel-dossie-colaborador');
+  const valorAtualDossie = selectDossie.value;
+  selectDossie.innerHTML = '<option value="">Todos</option>' + options;
+  selectDossie.value = valorAtualDossie;
 }
 
 // Relatório de Férias — segue fielmente os 3 modelos que o Sidney mandou
@@ -2502,30 +2511,115 @@ function renderRelatorioFerias() {
   container.innerHTML = blocos.length ? blocos.join('') : '<div class="card empty-msg">Nenhum colaborador ativo com admissão cadastrada.</div>';
 }
 
-function renderRelatorioDecimo() {
-  const tbody = document.getElementById('rel-decimo-tbody');
-  if (!tbody) return;
-  const filtroSetor = document.getElementById('rel-decimo-setor').value;
-  const linhas = Array.from(decimosDoAno.values())
-    .map(l => ({ l, c: colaboradoresMap.get(l.colaboradorId) }))
-    .filter(x => x.c)
-    .filter(x => !filtroSetor || x.c.areaAtuacao === filtroSetor)
-    .sort((a, b) => a.c.nome.localeCompare(b.c.nome));
+// Relatório de 13º Salário — segue os 3 modelos do Sidney (Colaborador/
+// Geral/Período): Colaborador é bloco único; Geral e Período são a mesma
+// tabela plana com linha de TOTAIS, só mudando se filtra por data ou não.
+let filtroDecimoRelatorio = 'colaborador'; // 'colaborador' | 'geral' | 'periodo'
 
-  if (linhas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Nenhum colaborador lançado neste ano ainda.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = linhas.map(({ l, c }) => `
+function selecionarFiltroDecimo(filtro) {
+  filtroDecimoRelatorio = filtro;
+  document.querySelectorAll('[data-filtro-decimo]').forEach(btn => {
+    const ativo = btn.dataset.filtroDecimo === filtro;
+    btn.classList.toggle('btn-primary', ativo);
+    btn.classList.toggle('btn-dark', !ativo);
+  });
+  document.getElementById('rel-decimo-filtro-colaborador-row').style.display = filtro === 'colaborador' ? 'flex' : 'none';
+  document.getElementById('rel-decimo-filtro-periodo-row').style.display = filtro === 'periodo' ? 'flex' : 'none';
+  renderRelatorioDecimo();
+}
+
+function renderBlocoColaboradorDecimo(colaborador, l) {
+  return `
+    <div class="card">
+      <div class="form-row">
+        <div class="field" style="flex:1;min-width:200px"><label>Colaborador</label><div>${colaborador.nome}</div></div>
+        <div class="field"><label>Admissão</label><div>${colaborador.dataAdmissao ? formatarDataBR(colaborador.dataAdmissao) : '—'}</div></div>
+        <div class="field"><label>Cargo</label><div>${colaborador.areaAtuacao || '—'}</div></div>
+      </div>
+      <table style="margin-top:10px">
+        <thead><tr><th>Salário Base</th><th>Data 1ª parcela</th><th>Valor 1ª parcela</th><th>Data 2ª parcela</th><th>Valor 2ª parcela</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>${formatBRL(colaborador.salarioBase || 0)}</td>
+            <td>${l?.dataParcela1 ? formatarDataBR(l.dataParcela1) : '—'}</td>
+            <td>${formatBRL(l?.valorParcela1 || 0)}</td>
+            <td>${l?.dataParcela2 ? formatarDataBR(l.dataParcela2) : '—'}</td>
+            <td>${formatBRL(l?.valorParcela2 || 0)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderTabelaGeralDecimo(linhas) {
+  if (linhas.length === 0) return '<div class="card empty-msg">Nenhum resultado para os filtros selecionados.</div>';
+  const totalSalario = linhas.reduce((soma, { c }) => soma + (c.salarioBase || 0), 0);
+  const totalP1 = linhas.reduce((soma, { l }) => soma + (l.valorParcela1 || 0), 0);
+  const totalP2 = linhas.reduce((soma, { l }) => soma + (l.valorParcela2 || 0), 0);
+  const linhasHtml = linhas.map(({ l, c }) => `
     <tr>
       <td>${c.nome}</td>
+      <td>${c.dataAdmissao ? formatarDataBR(c.dataAdmissao) : '—'}</td>
       <td>${c.areaAtuacao || '—'}</td>
-      <td>${formatBRL(l.valorParcela1 || 0)}</td>
+      <td>${formatBRL(c.salarioBase || 0)}</td>
       <td>${l.dataParcela1 ? formatarDataBR(l.dataParcela1) : '—'}</td>
-      <td>${formatBRL(l.valorParcela2 || 0)}</td>
+      <td>${formatBRL(l.valorParcela1 || 0)}</td>
       <td>${l.dataParcela2 ? formatarDataBR(l.dataParcela2) : '—'}</td>
+      <td>${formatBRL(l.valorParcela2 || 0)}</td>
     </tr>
   `).join('');
+  return `
+    <div class="card table-scroll" style="padding:0">
+      <table>
+        <thead><tr><th>Colaborador</th><th>Admissão</th><th>Cargo</th><th>Salário Base</th><th>Data 1ª parcela</th><th>Valor 1ª parcela</th><th>Data 2ª parcela</th><th>Valor 2ª parcela</th></tr></thead>
+        <tbody>${linhasHtml}</tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3">TOTAIS</td>
+            <td>${formatBRL(totalSalario)}</td>
+            <td></td>
+            <td>${formatBRL(totalP1)}</td>
+            <td></td>
+            <td>${formatBRL(totalP2)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  `;
+}
+
+function renderRelatorioDecimo() {
+  const container = document.getElementById('rel-decimo-container');
+  if (!container) return;
+
+  if (filtroDecimoRelatorio === 'colaborador') {
+    const colaboradorId = document.getElementById('rel-decimo-colaborador').value;
+    const c = colaboradorId ? colaboradoresMap.get(colaboradorId) : null;
+    if (!c) { container.innerHTML = '<div class="card empty-msg">Selecione um colaborador.</div>'; return; }
+    container.innerHTML = renderBlocoColaboradorDecimo(c, decimosDoAno.get(colaboradorId));
+    return;
+  }
+
+  const linhasBase = Array.from(decimosDoAno.values())
+    .map(l => ({ l, c: colaboradoresMap.get(l.colaboradorId) }))
+    .filter(x => x.c)
+    .sort((a, b) => a.c.nome.localeCompare(b.c.nome));
+
+  if (filtroDecimoRelatorio === 'periodo') {
+    const de = document.getElementById('rel-decimo-periodo-de').value;
+    const ate = document.getElementById('rel-decimo-periodo-ate').value;
+    if (!de || !ate) { container.innerHTML = '<div class="card empty-msg">Informe o período (de/até).</div>'; return; }
+    const filtradas = linhasBase.filter(({ l }) =>
+      (l.dataParcela1 && l.dataParcela1 >= de && l.dataParcela1 <= ate) ||
+      (l.dataParcela2 && l.dataParcela2 >= de && l.dataParcela2 <= ate)
+    );
+    container.innerHTML = renderTabelaGeralDecimo(filtradas);
+    return;
+  }
+
+  // 'geral'
+  container.innerHTML = renderTabelaGeralDecimo(linhasBase);
 }
 
 function renderRelatorioDossie() {
