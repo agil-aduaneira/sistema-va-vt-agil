@@ -1132,6 +1132,25 @@ function aplicarFocoColaborador() {
   document.querySelectorAll('#colaboradores-tbody tr[data-colab-row]').forEach(tr => {
     tr.style.display = (!emFoco || tr.dataset.colabRow === emFoco) ? '' : 'none';
   });
+
+  // Preenche o formulário do topo com os dados do colaborador em foco, pra
+  // consulta/edição rápida sem precisar clicar em "Editar" -- só quando a
+  // tabela normal está visível (fora do modo de edição completa via
+  // "Editar", que já cuida do próprio preenchimento e some com a tabela).
+  const emEdicaoCompleta = document.getElementById('painel-tabela-colab').style.display === 'none';
+  if (emEdicaoCompleta) return;
+
+  if (emFoco) {
+    editandoColaboradorId = emFoco;
+    preencherFormularioColaborador(emFoco);
+    document.getElementById('btn-add-colab').textContent = 'Salvar alterações';
+    document.getElementById('btn-cancelar-edicao').style.display = 'inline-block';
+  } else if (editandoColaboradorId) {
+    editandoColaboradorId = null;
+    limparFormularioColaborador();
+    document.getElementById('btn-add-colab').textContent = 'Adicionar colaborador';
+    document.getElementById('btn-cancelar-edicao').style.display = 'none';
+  }
 }
 
 // Atalho: troca de aba e, quando a aba tem um seletor de colaborador
@@ -1179,10 +1198,9 @@ function definirBadgeForm(id, ligado) {
   btn.textContent = (ligado ? 'Recebe ' : 'Não recebe ') + textoBase;
 }
 
-function iniciarEdicaoColaborador(id) {
+function preencherFormularioColaborador(id) {
   const c = colaboradoresMap.get(id);
   if (!c) return;
-  editandoColaboradorId = id;
   document.getElementById('input-nome').value = c.nome;
   document.getElementById('input-area-atuacao').value = c.areaAtuacao || '';
   document.getElementById('input-admissao-colab').value = c.dataAdmissao || '';
@@ -1193,6 +1211,25 @@ function iniciarEdicaoColaborador(id) {
   document.getElementById('input-rota').value = c.rotaId || '';
   document.getElementById('input-aso-data').value = c.asoData || '';
   document.getElementById('input-nascimento').value = c.dataNascimento || '';
+}
+
+function limparFormularioColaborador() {
+  document.getElementById('input-nome').value = '';
+  document.getElementById('input-area-atuacao').value = '';
+  document.getElementById('input-admissao-colab').value = '';
+  document.getElementById('input-salario').value = '';
+  document.getElementById('input-plano').value = '';
+  definirBadgeForm('toggle-form-va', true);
+  definirBadgeForm('toggle-form-vt', true);
+  document.getElementById('input-rota').value = '';
+  document.getElementById('input-aso-data').value = '';
+  document.getElementById('input-nascimento').value = '';
+}
+
+function iniciarEdicaoColaborador(id) {
+  if (!colaboradoresMap.has(id)) return;
+  editandoColaboradorId = id;
+  preencherFormularioColaborador(id);
   document.getElementById('btn-add-colab').textContent = 'Salvar alterações';
   document.getElementById('btn-cancelar-edicao').style.display = 'inline-block';
   document.getElementById('painel-atalhos-edicao').style.display = 'flex';
@@ -1206,21 +1243,16 @@ function iniciarEdicaoColaborador(id) {
 
 function cancelarEdicaoColaborador() {
   editandoColaboradorId = null;
-  document.getElementById('input-nome').value = '';
-  document.getElementById('input-area-atuacao').value = '';
-  document.getElementById('input-admissao-colab').value = '';
-  document.getElementById('input-salario').value = '';
-  document.getElementById('input-plano').value = '';
-  definirBadgeForm('toggle-form-va', true);
-  definirBadgeForm('toggle-form-vt', true);
-  document.getElementById('input-rota').value = '';
-  document.getElementById('input-aso-data').value = '';
-  document.getElementById('input-nascimento').value = '';
+  limparFormularioColaborador();
   document.getElementById('btn-add-colab').textContent = 'Adicionar colaborador';
   document.getElementById('btn-cancelar-edicao').style.display = 'none';
   document.getElementById('painel-atalhos-edicao').style.display = 'none';
   document.getElementById('painel-bulk-colab').style.display = 'flex';
   document.getElementById('painel-tabela-colab').style.display = 'block';
+  if (selecionadosColab.size > 0) {
+    selecionadosColab.clear();
+    aplicarFocoColaborador();
+  }
 }
 
 async function criarColaborador() {
