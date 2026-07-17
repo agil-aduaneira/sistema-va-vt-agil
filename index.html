@@ -248,10 +248,6 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <label>Cargo</label>
         <select id="input-area-atuacao">
           <option value="">Selecione...</option>
-          <option value="Importação">Importação</option>
-          <option value="Exportação">Exportação</option>
-          <option value="Financeiro">Financeiro</option>
-          <option value="Externo">Externo</option>
         </select>
       </div>
       <div class="field">
@@ -398,6 +394,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <input type="text" id="input-cargo-nome" placeholder="Ex.: Analista de Importação">
       </div>
       <button class="btn btn-primary" id="btn-add-cargo">Adicionar cargo</button>
+      <button class="btn btn-dark" id="btn-cancelar-cargo" style="display:none">Cancelar</button>
     </div>
 
     <div class="card" style="padding:0;overflow-x:auto">
@@ -632,10 +629,6 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <label>Cargo</label>
         <select id="rel-ferias-setor">
           <option value="">Todos</option>
-          <option value="Importação">Importação</option>
-          <option value="Exportação">Exportação</option>
-          <option value="Financeiro">Financeiro</option>
-          <option value="Externo">Externo</option>
         </select>
       </div>
       <div class="field" style="min-width:160px">
@@ -670,10 +663,6 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <label>Cargo</label>
         <select id="rel-decimo-setor">
           <option value="">Todos</option>
-          <option value="Importação">Importação</option>
-          <option value="Exportação">Exportação</option>
-          <option value="Financeiro">Financeiro</option>
-          <option value="Externo">Externo</option>
         </select>
       </div>
     </div>
@@ -911,6 +900,7 @@ function iniciarApp() {
   document.getElementById('toggle-form-vt').addEventListener('click', (e) => alternarBadgeForm(e.target));
   document.getElementById('btn-add-rota').addEventListener('click', criarRota);
   document.getElementById('btn-add-cargo').addEventListener('click', criarCargo);
+  document.getElementById('btn-cancelar-cargo').addEventListener('click', cancelarEdicaoCargo);
 
   for (const id of ['rel-ferias-colaborador', 'rel-ferias-setor', 'rel-ferias-status', 'rel-ferias-de', 'rel-ferias-ate']) {
     document.getElementById(id).addEventListener('change', renderRelatorioFerias);
@@ -1426,32 +1416,67 @@ function renderCargosTable() {
   tbody.innerHTML = linhas.map(([id, c]) => `
     <tr>
       <td>${c.nome}</td>
-      <td style="text-align:right"><button class="btn-link" data-del-cargo="${id}">Excluir</button></td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn-link" style="color:var(--blue)" data-edit-cargo="${id}">Editar</button>
+        <button class="btn-link" data-del-cargo="${id}">Excluir</button>
+      </td>
     </tr>
   `).join('');
+  tbody.querySelectorAll('[data-edit-cargo]').forEach(btn => {
+    btn.addEventListener('click', () => iniciarEdicaoCargo(btn.dataset.editCargo));
+  });
   tbody.querySelectorAll('[data-del-cargo]').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm(`Excluir o cargo "${cargosMap.get(btn.dataset.delCargo)?.nome}"?`)) return;
       await deleteDoc(doc(db, 'cargos', btn.dataset.delCargo));
+      if (editandoCargoId === btn.dataset.delCargo) cancelarEdicaoCargo();
     });
   });
 }
 
 function renderCargosSelects() {
   const linhas = Array.from(cargosMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
-  const options = '<option value="">Selecione...</option>' +
-    linhas.map(([, c]) => `<option value="${c.nome}">${c.nome}</option>`).join('');
-  for (const selectId of ['input-dossie-cargo-de', 'input-dossie-cargo-para']) {
+  const optionsCargos = linhas.map(([, c]) => `<option value="${c.nome}">${c.nome}</option>`).join('');
+  for (const selectId of ['input-dossie-cargo-de', 'input-dossie-cargo-para', 'input-area-atuacao']) {
     const select = document.getElementById(selectId);
     const valorAtual = select.value;
-    select.innerHTML = options;
+    select.innerHTML = '<option value="">Selecione...</option>' + optionsCargos;
     select.value = valorAtual;
   }
+  for (const selectId of ['rel-ferias-setor', 'rel-decimo-setor']) {
+    const select = document.getElementById(selectId);
+    const valorAtual = select.value;
+    select.innerHTML = '<option value="">Todos</option>' + optionsCargos;
+    select.value = valorAtual;
+  }
+}
+
+let editandoCargoId = null;
+
+function iniciarEdicaoCargo(id) {
+  const c = cargosMap.get(id);
+  if (!c) return;
+  editandoCargoId = id;
+  document.getElementById('input-cargo-nome').value = c.nome;
+  document.getElementById('btn-add-cargo').textContent = 'Salvar alterações';
+  document.getElementById('btn-cancelar-cargo').style.display = 'inline-block';
+}
+
+function cancelarEdicaoCargo() {
+  editandoCargoId = null;
+  document.getElementById('input-cargo-nome').value = '';
+  document.getElementById('btn-add-cargo').textContent = 'Adicionar cargo';
+  document.getElementById('btn-cancelar-cargo').style.display = 'none';
 }
 
 async function criarCargo() {
   const nome = document.getElementById('input-cargo-nome').value.trim();
   if (!nome) { alert('Informe o nome do cargo.'); return; }
+  if (editandoCargoId) {
+    await updateDoc(doc(db, 'cargos', editandoCargoId), { nome });
+    cancelarEdicaoCargo();
+    return;
+  }
   const id = 'cg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   await setDoc(doc(db, 'cargos', id), { nome });
   document.getElementById('input-cargo-nome').value = '';
