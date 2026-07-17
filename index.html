@@ -286,7 +286,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <input type="date" id="input-nascimento">
       </div>
       <button class="btn btn-primary" id="btn-add-colab">Adicionar colaborador</button>
-      <button class="btn btn-ghost" id="btn-cancelar-edicao" style="display:none">Cancelar</button>
+      <button class="btn btn-dark" id="btn-cancelar-edicao" style="display:none">Cancelar</button>
     </div>
 
     <div class="card form-row" id="painel-atalhos-edicao" style="display:none">
@@ -418,6 +418,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
   <div class="tab-pane" id="tab-ferias">
     <h1>Férias</h1>
     <div class="subtitle">Data de admissão e períodos de férias por colaborador. Quando um período estiver "gozado" no mês do lançamento, o V.A./V.T. daquele colaborador não é calculado naquele mês (só o plano de saúde).</div>
+    <button class="btn btn-dark" id="btn-voltar-colaboradores-ferias" style="display:none;margin-bottom:16px">&larr; Voltar para Colaboradores</button>
 
     <div class="card form-row">
       <div class="field" style="flex:1;min-width:220px">
@@ -476,6 +477,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
   <div class="tab-pane" id="tab-decimo">
     <h1>13º Salário</h1>
     <div class="subtitle">Valores e datas de pagamento das duas parcelas, por ano.</div>
+    <button class="btn btn-dark" id="btn-voltar-colaboradores-decimo" style="display:none;margin-bottom:16px">&larr; Voltar para Colaboradores</button>
 
     <div class="month-nav">
       <button class="btn btn-ghost" id="btn-ano-anterior">&larr; anterior</button>
@@ -530,6 +532,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
   <div class="tab-pane" id="tab-dossie">
     <h1>Dossiê</h1>
     <div class="subtitle">Histórico do colaborador: trajetória, mudanças de cargo/salário, atrasos, faltas, atestados e ocorrências.</div>
+    <button class="btn btn-dark" id="btn-voltar-colaboradores-dossie" style="display:none;margin-bottom:16px">&larr; Voltar para Colaboradores</button>
 
     <div class="card form-row">
       <div class="field" style="flex:1;min-width:220px">
@@ -759,6 +762,12 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    // O botão "Voltar para Colaboradores" só aparece logo depois de vir de um
+    // atalho (ver irParaColaboradorEm); qualquer troca de aba (inclusive pelo
+    // menu de cima) esconde de novo, pra não ficar solto fora de contexto.
+    for (const id of ['btn-voltar-colaboradores-ferias', 'btn-voltar-colaboradores-decimo', 'btn-voltar-colaboradores-dossie']) {
+      document.getElementById(id).style.display = 'none';
+    }
   });
 });
 
@@ -869,6 +878,9 @@ function iniciarApp() {
   document.getElementById('btn-atalho-ferias').addEventListener('click', (e) => irParaColaboradorEm('ferias', e.target.dataset.colabId));
   document.getElementById('btn-atalho-decimo').addEventListener('click', (e) => irParaColaboradorEm('decimo', e.target.dataset.colabId));
   document.getElementById('btn-atalho-dossie').addEventListener('click', (e) => irParaColaboradorEm('dossie', e.target.dataset.colabId));
+  for (const id of ['btn-voltar-colaboradores-ferias', 'btn-voltar-colaboradores-decimo', 'btn-voltar-colaboradores-dossie']) {
+    document.getElementById(id).addEventListener('click', () => document.querySelector('.tab-btn[data-tab="colaboradores"]').click());
+  }
   document.getElementById('btn-salvar-config').addEventListener('click', salvarConfig);
 
   document.getElementById('chk-select-all').addEventListener('change', (e) => {
@@ -1173,6 +1185,8 @@ function irParaColaboradorEm(tabName, colaboradorId) {
       if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 50);
   }
+  const btnVoltarId = { ferias: 'btn-voltar-colaboradores-ferias', decimo: 'btn-voltar-colaboradores-decimo', dossie: 'btn-voltar-colaboradores-dossie' }[tabName];
+  if (btnVoltarId) document.getElementById(btnVoltarId).style.display = 'inline-block';
 }
 
 async function aplicarEmLoteColaborador(campo, valor) {
