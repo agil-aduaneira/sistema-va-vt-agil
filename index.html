@@ -261,6 +261,16 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
           <option value="">Selecione...</option>
         </select>
       </div>
+      <div class="field" style="min-width:140px">
+        <label>Setor</label>
+        <select id="input-setor">
+          <option value="">Selecione...</option>
+          <option value="Importação">Importação</option>
+          <option value="Exportação">Exportação</option>
+          <option value="Financeiro">Financeiro</option>
+          <option value="Externo">Externo</option>
+        </select>
+      </div>
       <div class="field">
         <label>Data de admissão</label>
         <input type="date" id="input-admissao-colab">
@@ -333,7 +343,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <thead>
           <tr>
             <th><input type="checkbox" id="chk-select-all-colab" title="Selecionar todos"></th>
-            <th>Nome</th><th>Cargo</th><th>Salário base</th><th>Plano de saúde</th><th>Status</th>
+            <th>Nome</th><th>Cargo</th><th>Setor</th><th>Salário base</th><th>Plano de saúde</th><th>Status</th>
             <th>V.A.</th><th>V.T.</th><th>ASO</th><th>Nascimento</th><th></th>
           </tr>
         </thead>
@@ -548,6 +558,15 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
           </tr>
         </thead>
         <tbody id="decimo-tbody"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2">Total do ano</td>
+            <td id="total-decimo-parcela1">R$ 0,00</td>
+            <td></td>
+            <td id="total-decimo-parcela2">R$ 0,00</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
       </table>
     </div>
   </div>
@@ -887,6 +906,10 @@ function iniciarApp() {
   document.getElementById('btn-exportar').addEventListener('click', exportarMesAtual);
   document.getElementById('btn-add-colab').addEventListener('click', criarColaborador);
   document.getElementById('btn-cancelar-edicao').addEventListener('click', cancelarEdicaoColaborador);
+  document.getElementById('input-area-atuacao').addEventListener('change', (e) => {
+    const setorInferido = inferirSetorPorCargo(e.target.value);
+    if (setorInferido) document.getElementById('input-setor').value = setorInferido;
+  });
   document.getElementById('btn-atalho-ferias').addEventListener('click', (e) => irParaColaboradorEm('ferias', e.target.dataset.colabId));
   document.getElementById('btn-atalho-decimo').addEventListener('click', (e) => irParaColaboradorEm('decimo', e.target.dataset.colabId));
   document.getElementById('btn-atalho-dossie').addEventListener('click', (e) => irParaColaboradorEm('dossie', e.target.dataset.colabId));
@@ -1072,7 +1095,7 @@ function renderColaboradoresTable() {
   const tbody = document.getElementById('colaboradores-tbody');
   const linhas = Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
   if (linhas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="11" class="empty-msg">Nenhum colaborador cadastrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="empty-msg">Nenhum colaborador cadastrado ainda.</td></tr>';
     return;
   }
   tbody.innerHTML = linhas.map(([id, c]) => {
@@ -1088,6 +1111,7 @@ function renderColaboradoresTable() {
       <td><input type="checkbox" data-select-colab-id="${id}" ${selecionadosColab.has(id) ? 'checked' : ''}></td>
       <td>${c.nome}</td>
       <td>${c.areaAtuacao || '—'}</td>
+      <td>${c.setor || '—'}</td>
       <td>${formatBRL(c.salarioBase)}</td>
       <td>${c.valorPlanoSaude > 0 ? formatBRL(c.valorPlanoSaude) : '—'}</td>
       <td>${statusCell}</td>
@@ -1248,11 +1272,23 @@ function definirBadgeForm(id, ligado) {
   btn.textContent = (ligado ? 'Recebe ' : 'Não recebe ') + textoBase;
 }
 
+// Deduz o Setor a partir do nome do Cargo (ex.: "Analista de Importação" ->
+// "Importação"). Só sugere quando o nome bate com um dos dois -- cargos que
+// não seguem esse padrão (ex. "Ajudante de Despachante") não alteram o Setor
+// já escolhido, que continua editável manualmente pra esses casos.
+function inferirSetorPorCargo(nomeCargo) {
+  if (!nomeCargo) return null;
+  if (nomeCargo.includes('Importação')) return 'Importação';
+  if (nomeCargo.includes('Exportação')) return 'Exportação';
+  return null;
+}
+
 function preencherFormularioColaborador(id) {
   const c = colaboradoresMap.get(id);
   if (!c) return;
   document.getElementById('input-nome').value = c.nome;
   document.getElementById('input-area-atuacao').value = c.areaAtuacao || '';
+  document.getElementById('input-setor').value = c.setor || '';
   document.getElementById('input-admissao-colab').value = c.dataAdmissao || '';
   document.getElementById('input-salario').value = c.salarioBase;
   document.getElementById('input-plano').value = c.valorPlanoSaude || '';
@@ -1266,6 +1302,7 @@ function preencherFormularioColaborador(id) {
 function limparFormularioColaborador() {
   document.getElementById('input-nome').value = '';
   document.getElementById('input-area-atuacao').value = '';
+  document.getElementById('input-setor').value = '';
   document.getElementById('input-admissao-colab').value = '';
   document.getElementById('input-salario').value = '';
   document.getElementById('input-plano').value = '';
@@ -1308,6 +1345,7 @@ function cancelarEdicaoColaborador() {
 async function criarColaborador() {
   const nome = document.getElementById('input-nome').value.trim();
   const areaAtuacao = document.getElementById('input-area-atuacao').value || null;
+  const setor = document.getElementById('input-setor').value || null;
   const dataAdmissao = document.getElementById('input-admissao-colab').value || null;
   const salarioBase = Number(document.getElementById('input-salario').value || 0);
   const valorPlanoSaude = Number(document.getElementById('input-plano').value || 0);
@@ -1319,7 +1357,7 @@ async function criarColaborador() {
   if (!nome || !salarioBase) { alert('Nome e salário base são obrigatórios.'); return; }
 
   if (editandoColaboradorId) {
-    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), { nome, areaAtuacao, dataAdmissao, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId, asoData, dataNascimento });
+    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), { nome, areaAtuacao, setor, dataAdmissao, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId, asoData, dataNascimento });
     cancelarEdicaoColaborador();
     return;
   }
@@ -1330,7 +1368,7 @@ async function criarColaborador() {
   if (!asoData && dataAdmissao) asoData = dataAdmissao;
 
   const id = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  await setDoc(doc(db, 'colaboradores', id), { nome, areaAtuacao, dataAdmissao, salarioBase, valorPlanoSaude, ativo: true, recebeVA, recebeVT, rotaId, asoData, dataNascimento });
+  await setDoc(doc(db, 'colaboradores', id), { nome, areaAtuacao, setor, dataAdmissao, salarioBase, valorPlanoSaude, ativo: true, recebeVA, recebeVT, rotaId, asoData, dataNascimento });
   cancelarEdicaoColaborador();
 }
 
@@ -1959,6 +1997,11 @@ function renderDecimoTable() {
     .filter(x => x.c)
     .sort((a, b) => a.c.nome.localeCompare(b.c.nome));
 
+  const totalParcela1 = linhas.reduce((soma, { l }) => soma + (l.valorParcela1 || 0), 0);
+  const totalParcela2 = linhas.reduce((soma, { l }) => soma + (l.valorParcela2 || 0), 0);
+  document.getElementById('total-decimo-parcela1').textContent = formatBRL(totalParcela1);
+  document.getElementById('total-decimo-parcela2').textContent = formatBRL(totalParcela2);
+
   if (linhas.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">Nenhum colaborador lançado neste ano ainda.</td></tr>';
     return;
@@ -2039,11 +2082,16 @@ async function adicionarTodosDecimoAoAno() {
   if (!confirm(`Adicionar os ${faltando.length} colaboradores ativos que ainda não estão no 13º de ${anoAtual}?`)) return;
 
   const batch = writeBatch(db);
-  for (const [id] of faltando) {
+  for (const [id, c] of faltando) {
     const docId = `${anoAtual}_${id}`;
+    // Padrão: 1ª parcela = metade do salário base, 2ª parcela = o restante
+    // (cobre o caso de centavo ímpar, ex. salário R$ 100,01 -> 50,00 + 50,01).
+    // Continua editável linha a linha pra exceções.
+    const valorParcela1 = Math.round((c.salarioBase || 0) / 2 * 100) / 100;
+    const valorParcela2 = Math.round(((c.salarioBase || 0) - valorParcela1) * 100) / 100;
     batch.set(doc(db, 'decimoTerceiro', docId), {
       ano: anoAtual, colaboradorId: id,
-      valorParcela1: 0, dataParcela1: null, valorParcela2: 0, dataParcela2: null,
+      valorParcela1, dataParcela1: null, valorParcela2, dataParcela2: null,
     });
   }
   await batch.commit();
