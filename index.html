@@ -22,6 +22,8 @@ header{
   background:linear-gradient(105deg,var(--navy) 0%,var(--navy2) 55%,var(--blue) 100%);
   color:#fff;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
 }
+header .brand-row{display:flex;align-items:center;gap:12px}
+header .brand-logo{width:36px;height:36px;flex-shrink:0}
 header .brand{font-size:16px;font-weight:700}
 header .brand-sub{font-size:11px;color:rgba(255,255,255,.6);margin-top:2px}
 header .user-area{display:flex;align-items:center;gap:16px;font-size:13px}
@@ -64,8 +66,14 @@ h1{font-size:19px;color:var(--navy);margin-bottom:2px}
 .btn-primary:disabled{opacity:.5;cursor:not-allowed}
 .btn-dark{background:var(--navy);color:#fff}
 .btn-dark:hover{opacity:.9}
-.btn-link{background:none;color:var(--red);font-size:12px;padding:2px 4px}
-.btn-link:hover{text-decoration:underline}
+.btn-link{
+  background:#fff;color:var(--red);font-size:12px;font-weight:600;
+  padding:5px 12px;margin:0 2px;border:1.5px solid currentColor;border-radius:20px;
+  cursor:pointer;line-height:1.3;font-family:var(--font);
+}
+.btn-link:hover{opacity:.6}
+.btn-link:first-child{margin-left:0}
+.btn-link:last-child{margin-right:0}
 .btn-ghost{background:var(--g100);color:var(--g700)}
 .btn-ghost:hover{background:var(--g200)}
 
@@ -110,9 +118,12 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
 
 <div id="app">
   <header>
-    <div>
-      <div class="brand">Setor Pessoal — Agil Aduaneira</div>
-      <div class="brand-sub">Cálculo de Vale Alimentação, Vale Transporte, plano de saúde e cadastro de colaboradores</div>
+    <div class="brand-row">
+      <img src="logo-agil.png" alt="Agil Aduaneira" class="brand-logo">
+      <div>
+        <div class="brand">Setor Pessoal — Agil Aduaneira</div>
+        <div class="brand-sub">Cálculo de Vale Alimentação, Vale Transporte, plano de saúde e cadastro de colaboradores</div>
+      </div>
     </div>
     <div class="user-area">
       <span id="user-email"></span>
@@ -439,6 +450,14 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
 
     <div class="card form-row">
       <div class="field">
+        <label>Período Aquisitivo - Início (automático)</label>
+        <input type="date" id="input-periodo-aquisitivo-inicio">
+      </div>
+      <div class="field">
+        <label>Período Aquisitivo - Fim (automático)</label>
+        <input type="date" id="input-periodo-aquisitivo-fim">
+      </div>
+      <div class="field">
         <label>Limite até (automático)</label>
         <input type="date" id="input-periodo-limite">
       </div>
@@ -467,7 +486,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <input type="text" id="input-periodo-observacoes" placeholder="Ex.: precisa ser oficializada em agosto/2026">
       </div>
       <button class="btn btn-primary" id="btn-add-periodo">Adicionar período</button>
-      <button class="btn btn-ghost" id="btn-cancelar-edicao-periodo" style="display:none">Cancelar</button>
+      <button class="btn btn-dark" id="btn-cancelar-edicao-periodo" style="display:none">Cancelar</button>
     </div>
 
     <div class="card" style="padding:0;overflow-x:auto">
@@ -1077,9 +1096,9 @@ function renderColaboradoresTable() {
       <td><span class="badge ${aso.classe}" title="${c.asoData ? 'Último ASO: ' + c.asoData : 'ASO nunca cadastrado'}">${aso.texto}</span></td>
       <td>${c.dataNascimento ? formatarDataBR(c.dataNascimento) : '—'}</td>
       <td style="text-align:right;white-space:nowrap">
-        <button class="btn-link" data-goto-ferias="${id}" title="Ver férias">Férias</button>
-        <button class="btn-link" data-goto-decimo="${id}" title="Ver 13º salário">13º</button>
-        <button class="btn-link" data-goto-dossie="${id}" title="Ver dossiê">Dossiê</button>
+        <button class="btn-link" style="color:var(--blue)" data-goto-ferias="${id}" title="Ver férias">Férias</button>
+        <button class="btn-link" style="color:var(--blue)" data-goto-decimo="${id}" title="Ver 13º salário">13º</button>
+        <button class="btn-link" style="color:var(--blue)" data-goto-dossie="${id}" title="Ver dossiê">Dossiê</button>
         <button class="btn-link" style="color:var(--blue)" data-edit-id="${id}">Editar</button>
         <button class="btn-link" data-del-id="${id}">Excluir</button>
       </td>
@@ -1799,7 +1818,7 @@ function proximoLimiteFeriasColaborador(colaboradorId, colaborador) {
     .filter(p => !p.gozadaInicio)
     .sort((a, b) => (a.limite || '').localeCompare(b.limite || ''))[0];
   if (pendente) return pendente.limite;
-  return calcularLimiteFerias(colaborador.dataAdmissao, contarPeriodosAquisitivosDistintos(periodos) + 1);
+  return calcularLimiteFerias(colaborador.dataAdmissao, periodos.length + 1);
 }
 
 async function carregarDashboard() {
@@ -1893,26 +1912,6 @@ function calcularPeriodoAquisitivoFerias(dataAdmissaoISO, numeroPeriodo) {
   const inicio = addMonthsISO(dataAdmissaoISO, (numeroPeriodo - 1) * 12);
   const fim = addDaysISO(addMonthsISO(dataAdmissaoISO, numeroPeriodo * 12), -1);
   return { inicio, fim };
-}
-
-// Períodos com o mesmo "limite" são o mesmo período aquisitivo fracionado em
-// 2+ linhas (férias tiradas em partes). Conta quantos períodos aquisitivos
-// DISTINTOS existem -- antes usava periodos.length, que conta linhas e por
-// isso avançava 1 ano a mais no cálculo de todo período seguinte a um
-// fracionamento.
-function contarPeriodosAquisitivosDistintos(periodos) {
-  return new Set(periodos.map(p => p.limite).filter(Boolean)).size;
-}
-
-// Numera cada período pelo período aquisitivo real (não pela posição da
-// linha): linhas com o mesmo "limite" recebem o mesmo número.
-function numerarPeriodosAquisitivos(periodosOrdenados) {
-  let numero = 0;
-  let ultimoLimite;
-  return periodosOrdenados.map(p => {
-    if (p.limite !== ultimoLimite) { numero++; ultimoLimite = p.limite; }
-    return { p, numeroAquisitivo: numero };
-  });
 }
 
 // ── 13º Salário ───────────────────────────────────────────────────
@@ -2062,18 +2061,7 @@ function renderSelectFeriasColaborador() {
 }
 
 function calcularAlertaFerias(p) {
-  if (p.gozadaInicio) {
-    // Distingue período programado (data futura), em andamento (hoje está
-    // dentro do intervalo) e realmente gozado (já passou) -- antes qualquer
-    // data preenchida em "Início férias" virava "Gozada", mesmo no futuro.
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const inicio = new Date(p.gozadaInicio + 'T00:00:00');
-    const fim = p.gozadaFim ? new Date(p.gozadaFim + 'T00:00:00') : inicio;
-    if (hoje < inicio) return { texto: 'Programada', classe: 'inativo' };
-    if (hoje <= fim) return { texto: 'Em andamento', classe: 'a-vencer' };
-    return { texto: 'Gozada', classe: 'ativo' };
-  }
+  if (p.gozadaInicio) return { texto: 'Gozada', classe: 'ativo' };
   if (!p.limite) return { texto: '—', classe: 'inativo' };
   const limite = new Date(p.limite + 'T00:00:00');
   const hoje = new Date();
@@ -2097,19 +2085,20 @@ function renderFeriasTable() {
     return;
   }
   const admissao = colaboradoresMap.get(feriasColaboradorId)?.dataAdmissao;
-  // Numera pelo período aquisitivo real: linhas com o mesmo "limite" (férias
-  // fracionadas) recebem o mesmo número, em vez de avançar 1 por linha -- é
-  // isso que antes fazia todo período depois de um fracionamento aparecer
-  // um ano adiantado.
-  tbody.innerHTML = numerarPeriodosAquisitivos(periodos).map(({ p, numeroAquisitivo }) => {
+  tbody.innerHTML = periodos.map((p, i) => {
     const alerta = calcularAlertaFerias(p);
-    const aquisitivo = admissao ? calcularPeriodoAquisitivoFerias(admissao, numeroAquisitivo) : null;
+    // Período aquisitivo: usa o que foi salvo no período (editável, corrige
+    // o caso de excluir um período do meio fora de ordem); se ainda não foi
+    // salvo (período antigo, de antes desse campo existir), cai pro cálculo
+    // por posição na lista, igual sempre funcionou.
+    const aquisitivoSalvo = p.aquisitivoInicio && p.aquisitivoFim ? { inicio: p.aquisitivoInicio, fim: p.aquisitivoFim } : null;
+    const aquisitivo = aquisitivoSalvo || (admissao ? calcularPeriodoAquisitivoFerias(admissao, i + 1) : null);
     const direito = p.direito ?? 30;
     const diasGozados = p.diasGozados ?? 0;
     const restam = Math.max(0, direito - diasGozados);
     return `
       <tr data-periodo-ferias-id="${p.id}">
-        <td>${numeroAquisitivo}ª</td>
+        <td>${i + 1}ª</td>
         <td>${aquisitivo ? `${formatarDataBR(aquisitivo.inicio)} a ${formatarDataBR(aquisitivo.fim)}` : '—'}</td>
         <td>${p.limite ? formatarDataBR(p.limite) : '—'}</td>
         <td>${p.gozadaInicio ? formatarDataBR(p.gozadaInicio) : '—'}</td>
@@ -2144,14 +2133,21 @@ function renderFeriasTable() {
   });
 }
 
-// Preenche "Limite até" com a data automática (admissão + 23 meses para a 1ª
-// férias, +1 ano a cada período seguinte). Continua editável para exceções.
+// Preenche "Limite até" e o "Período Aquisitivo" com as datas automáticas
+// (admissão + 23 meses pro limite da 1ª férias, +1 ano a cada período
+// seguinte; período aquisitivo de 12 meses contado da admissão). Os 3
+// continuam editáveis para exceções (ex.: período fora da sequência normal).
 function sugerirProximoLimiteFerias() {
   const admissao = colaboradoresMap.get(feriasColaboradorId)?.dataAdmissao;
-  const input = document.getElementById('input-periodo-limite');
-  if (!admissao) { input.value = ''; return; }
-  const numeroProximoPeriodo = contarPeriodosAquisitivosDistintos(todasFeriasMap.get(feriasColaboradorId) || []) + 1;
-  input.value = calcularLimiteFerias(admissao, numeroProximoPeriodo);
+  const inputLimite = document.getElementById('input-periodo-limite');
+  const inputAquisitivoInicio = document.getElementById('input-periodo-aquisitivo-inicio');
+  const inputAquisitivoFim = document.getElementById('input-periodo-aquisitivo-fim');
+  if (!admissao) { inputLimite.value = ''; inputAquisitivoInicio.value = ''; inputAquisitivoFim.value = ''; return; }
+  const numeroProximoPeriodo = (todasFeriasMap.get(feriasColaboradorId) || []).length + 1;
+  inputLimite.value = calcularLimiteFerias(admissao, numeroProximoPeriodo);
+  const aquisitivo = calcularPeriodoAquisitivoFerias(admissao, numeroProximoPeriodo);
+  inputAquisitivoInicio.value = aquisitivo.inicio;
+  inputAquisitivoFim.value = aquisitivo.fim;
 }
 
 async function salvarAdmissao() {
@@ -2165,9 +2161,16 @@ async function salvarAdmissao() {
 let editandoPeriodoFeriasId = null;
 
 function iniciarEdicaoPeriodoFerias(periodoId) {
-  const p = (todasFeriasMap.get(feriasColaboradorId) || []).find(x => x.id === periodoId);
+  const periodosOrdenados = (todasFeriasMap.get(feriasColaboradorId) || []).slice()
+    .sort((a, b) => (a.limite || '').localeCompare(b.limite || ''));
+  const indice = periodosOrdenados.findIndex(x => x.id === periodoId);
+  const p = periodosOrdenados[indice];
   if (!p) return;
   editandoPeriodoFeriasId = periodoId;
+  const admissao = colaboradoresMap.get(feriasColaboradorId)?.dataAdmissao;
+  const aquisitivoPadrao = admissao ? calcularPeriodoAquisitivoFerias(admissao, indice + 1) : null;
+  document.getElementById('input-periodo-aquisitivo-inicio').value = p.aquisitivoInicio || aquisitivoPadrao?.inicio || '';
+  document.getElementById('input-periodo-aquisitivo-fim').value = p.aquisitivoFim || aquisitivoPadrao?.fim || '';
   document.getElementById('input-periodo-limite').value = p.limite || '';
   document.getElementById('input-periodo-gozada-inicio').value = p.gozadaInicio || '';
   document.getElementById('input-periodo-gozada-fim').value = p.gozadaFim || '';
@@ -2183,6 +2186,8 @@ function iniciarEdicaoPeriodoFerias(periodoId) {
 function cancelarEdicaoPeriodoFerias() {
   editandoPeriodoFeriasId = null;
   document.getElementById('input-periodo-gozada-inicio').value = '';
+  // input-periodo-aquisitivo-inicio/fim são repreenchidos pelo
+  // sugerirProximoLimiteFerias() chamado no fim desta função.
   document.getElementById('input-periodo-gozada-fim').value = '';
   document.getElementById('input-periodo-retorno').value = '';
   document.getElementById('input-periodo-direito').value = config.direitoFeriasPadrao ?? 30;
@@ -2195,6 +2200,8 @@ function cancelarEdicaoPeriodoFerias() {
 
 async function criarPeriodoFerias() {
   if (!feriasColaboradorId) { alert('Selecione um colaborador primeiro.'); return; }
+  const aquisitivoInicio = document.getElementById('input-periodo-aquisitivo-inicio').value || null;
+  const aquisitivoFim = document.getElementById('input-periodo-aquisitivo-fim').value || null;
   const limite = document.getElementById('input-periodo-limite').value || null;
   const gozadaInicio = document.getElementById('input-periodo-gozada-inicio').value || null;
   const gozadaFim = document.getElementById('input-periodo-gozada-fim').value || null;
@@ -2205,12 +2212,12 @@ async function criarPeriodoFerias() {
   if (!limite) { alert('Informe ao menos a data limite.'); return; }
 
   if (editandoPeriodoFeriasId) {
-    await updateDoc(doc(db, 'ferias', editandoPeriodoFeriasId), { limite, gozadaInicio, gozadaFim, retorno, direito, diasGozados, observacoes });
+    await updateDoc(doc(db, 'ferias', editandoPeriodoFeriasId), { aquisitivoInicio, aquisitivoFim, limite, gozadaInicio, gozadaFim, retorno, direito, diasGozados, observacoes });
     cancelarEdicaoPeriodoFerias();
     return;
   }
 
-  await setDoc(doc(collection(db, 'ferias')), { colaboradorId: feriasColaboradorId, limite, gozadaInicio, gozadaFim, retorno, direito, diasGozados, observacoes });
+  await setDoc(doc(collection(db, 'ferias')), { colaboradorId: feriasColaboradorId, aquisitivoInicio, aquisitivoFim, limite, gozadaInicio, gozadaFim, retorno, direito, diasGozados, observacoes });
   document.getElementById('input-periodo-gozada-inicio').value = '';
   document.getElementById('input-periodo-gozada-fim').value = '';
   document.getElementById('input-periodo-retorno').value = '';
@@ -2460,13 +2467,14 @@ function selecionarFiltroFerias(filtro) {
 function feriasNumeradas(colaboradorId, colaborador) {
   const periodos = (todasFeriasMap.get(colaboradorId) || []).slice()
     .sort((a, b) => (a.limite || '').localeCompare(b.limite || ''));
-  // Mesma numeração por período aquisitivo real usada na aba Férias (linhas
-  // com o mesmo "limite" = mesmo período fracionado, mesmo número).
-  return numerarPeriodosAquisitivos(periodos).map(({ p, numeroAquisitivo }) => ({
-    p,
-    numero: numeroAquisitivo,
-    aquisitivo: colaborador.dataAdmissao ? calcularPeriodoAquisitivoFerias(colaborador.dataAdmissao, numeroAquisitivo) : null,
-  }));
+  return periodos.map((p, i) => {
+    const aquisitivoSalvo = p.aquisitivoInicio && p.aquisitivoFim ? { inicio: p.aquisitivoInicio, fim: p.aquisitivoFim } : null;
+    return {
+      p,
+      numero: i + 1,
+      aquisitivo: aquisitivoSalvo || (colaborador.dataAdmissao ? calcularPeriodoAquisitivoFerias(colaborador.dataAdmissao, i + 1) : null),
+    };
+  });
 }
 
 // Período pendente (ainda não gozado) mais próximo do vencimento; se não
@@ -2476,7 +2484,7 @@ function entradaAVencerColaborador(colaboradorId, colaborador) {
   const pendente = numeradas.filter(e => !e.p.gozadaInicio)
     .sort((a, b) => (a.p.limite || '').localeCompare(b.p.limite || ''))[0];
   if (pendente) return pendente;
-  const numeroProximo = (numeradas[numeradas.length - 1]?.numero ?? 0) + 1;
+  const numeroProximo = numeradas.length + 1;
   return {
     p: { limite: calcularLimiteFerias(colaborador.dataAdmissao, numeroProximo), gozadaInicio: null, gozadaFim: null, retorno: null, diasGozados: null },
     numero: numeroProximo,
