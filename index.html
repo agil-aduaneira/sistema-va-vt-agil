@@ -43,6 +43,26 @@ header .user-area button:hover{background:rgba(255,255,255,.22)}
 .tab-pane{display:none;padding:28px 32px;max-width:1500px;margin:0 auto}
 .tab-pane.active{display:block}
 
+.tab-btn-group{position:relative}
+.tab-btn-group .tab-caret{font-size:10px;margin-left:2px;opacity:.7}
+.tab-dropdown{
+  display:none;position:absolute;top:100%;left:0;background:#fff;border:1px solid var(--g200);
+  border-radius:0 0 10px 10px;box-shadow:0 14px 28px rgba(11,35,85,.2);z-index:50;padding:12px 0;
+  min-width:600px;
+}
+.tab-btn-group:hover .tab-dropdown,.tab-btn-group.open .tab-dropdown{display:flex}
+.tab-dropdown-col{flex:1;padding:0 8px;border-right:1px solid var(--g100)}
+.tab-dropdown-col:last-child{border-right:none}
+.tab-dropdown-title{
+  font-size:11px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.03em;
+  padding:6px 14px 6px;
+}
+.tab-dropdown button{
+  display:block;width:100%;text-align:left;padding:8px 14px;font-size:13px;color:var(--g800);
+  background:none;border:none;cursor:pointer;font-family:var(--font);border-radius:6px;
+}
+.tab-dropdown button:hover{background:var(--g50);color:var(--blue)}
+
 h1{font-size:19px;color:var(--navy);margin-bottom:2px}
 .subtitle{font-size:13px;color:var(--g500);margin-bottom:20px}
 
@@ -112,6 +132,28 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
 .stat-card .stat-label{font-size:12px;font-weight:600;color:var(--g500);text-transform:uppercase;letter-spacing:.02em}
 .stat-card .stat-value{font-size:24px;font-weight:700;color:var(--navy);margin-top:6px}
 .chart-wrap{background:#fff;border:1px solid var(--g200);border-radius:12px;padding:20px;height:340px}
+
+#print-area{display:none}
+@media print{
+  body *{visibility:hidden}
+  #print-area,#print-area *{visibility:visible}
+  #print-area{display:block;position:absolute;top:0;left:0;width:100%;padding:0}
+  .print-header{
+    background:linear-gradient(105deg,var(--navy) 0%,var(--navy2) 55%,var(--blue) 100%);
+    color:#fff;padding:16px 20px;border-radius:8px;display:flex;align-items:center;gap:14px;margin-bottom:16px;
+  }
+  .print-header img{width:40px;height:40px}
+  .print-empresa{font-size:13px;font-weight:700}
+  #print-titulo{font-size:16px;font-weight:700;margin-top:2px}
+  .print-meta{font-size:11px;color:var(--g500);margin-bottom:14px}
+  #print-conteudo .card{border:none;padding:0;margin-bottom:14px;box-shadow:none;background:none}
+  #print-conteudo table{width:100%;border-collapse:collapse;font-size:11px}
+  #print-conteudo th,#print-conteudo td{border:1px solid #ccc;padding:6px 8px;text-align:left}
+  #print-conteudo thead th{position:static;background:#eee}
+  #print-conteudo .table-scroll{max-height:none;overflow:visible}
+  #print-conteudo .badge{border:1px solid currentColor;background:none}
+  @page{margin:14mm}
+}
 </style>
 </head>
 <body>
@@ -140,7 +182,33 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
     <button class="tab-btn" data-tab="ferias">Férias</button>
     <button class="tab-btn" data-tab="decimo">13º Salário</button>
     <button class="tab-btn" data-tab="dossie">Dossiê</button>
-    <button class="tab-btn" data-tab="relatorios">Relatórios</button>
+    <div class="tab-btn-group" id="tab-relatorios-group">
+      <button class="tab-btn" data-tab="relatorios" id="tab-btn-relatorios">Relatórios <span class="tab-caret">&#9662;</span></button>
+      <div class="tab-dropdown" id="tab-relatorios-dropdown">
+        <div class="tab-dropdown-col">
+          <div class="tab-dropdown-title">Férias</div>
+          <button data-rel-nav="ferias:colaborador">Colaborador</button>
+          <button data-rel-nav="ferias:setor">Setor</button>
+          <button data-rel-nav="ferias:periodo">Período</button>
+          <button data-rel-nav="ferias:geral">Geral (ano vigente)</button>
+          <button data-rel-nav="ferias:vencidas">Vencidas</button>
+          <button data-rel-nav="ferias:a-vencer">A vencer</button>
+        </div>
+        <div class="tab-dropdown-col">
+          <div class="tab-dropdown-title">13&ordm; Salário</div>
+          <button data-rel-nav="decimo:colaborador">Colaborador</button>
+          <button data-rel-nav="decimo:geral">1&ordf; Parcela Todos</button>
+          <button data-rel-nav="decimo:geral">2&ordf; Parcela Todos</button>
+          <button data-rel-nav="decimo:geral">Geral</button>
+        </div>
+        <div class="tab-dropdown-col">
+          <div class="tab-dropdown-title">Dossiê</div>
+          <button data-rel-nav="dossie:colaborador">Colaborador</button>
+          <button data-rel-nav="dossie:periodo">Período</button>
+          <button data-rel-nav="dossie:tipo">Tipo</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ═══ DASHBOARD ═══ -->
@@ -659,16 +727,32 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
     <h1>Relatórios</h1>
     <div class="subtitle">Visão consolidada de todos os colaboradores — sem precisar abrir um por um. Envio automático de alerta por e-mail fica para uma etapa seguinte.</div>
 
-    <h1 style="margin-top:24px">Férias</h1>
+    <h1 style="margin-top:24px" id="rel-ferias-titulo">Férias</h1>
     <div class="card form-row">
-      <button class="btn btn-primary" id="btn-rel-ferias-colaborador" data-filtro-ferias="colaborador">Por Colaborador</button>
-      <button class="btn btn-dark" id="btn-rel-ferias-periodo" data-filtro-ferias="periodo">Por Período</button>
-      <button class="btn btn-dark" id="btn-rel-ferias-a-vencer" data-filtro-ferias="a-vencer">A Vencer</button>
+      <button class="btn btn-primary" id="btn-rel-ferias-colaborador" data-filtro-ferias="colaborador">Colaborador</button>
+      <button class="btn btn-dark" id="btn-rel-ferias-setor" data-filtro-ferias="setor">Setor</button>
+      <button class="btn btn-dark" id="btn-rel-ferias-periodo" data-filtro-ferias="periodo">Período</button>
+      <button class="btn btn-dark" id="btn-rel-ferias-geral" data-filtro-ferias="geral">Geral (ano vigente)</button>
+      <button class="btn btn-dark" id="btn-rel-ferias-vencidas" data-filtro-ferias="vencidas">Vencidas</button>
+      <button class="btn btn-dark" id="btn-rel-ferias-a-vencer" data-filtro-ferias="a-vencer">A vencer</button>
+      <button class="btn btn-dark" id="btn-rel-ferias-pdf" style="margin-left:auto">Gerar PDF</button>
     </div>
     <div class="card form-row" id="rel-ferias-filtro-colaborador-row">
       <div class="field" style="flex:1;min-width:220px">
         <label>Colaborador</label>
         <select id="rel-ferias-colaborador"><option value="">Selecione...</option></select>
+      </div>
+    </div>
+    <div class="card form-row" id="rel-ferias-filtro-setor-row" style="display:none">
+      <div class="field" style="min-width:220px">
+        <label>Setor</label>
+        <select id="rel-ferias-setor">
+          <option value="">Selecione...</option>
+          <option value="Importação">Importação</option>
+          <option value="Exportação">Exportação</option>
+          <option value="Financeiro">Financeiro</option>
+          <option value="Externo">Externo</option>
+        </select>
       </div>
     </div>
     <div class="card form-row" id="rel-ferias-filtro-periodo-row" style="display:none">
@@ -683,12 +767,13 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
     </div>
     <div id="rel-ferias-container"></div>
 
-    <h1 style="margin-top:36px">13º Salário</h1>
+    <h1 style="margin-top:36px" id="rel-decimo-titulo">13º Salário</h1>
     <div class="subtitle">Do ano vigente selecionado na aba "13º Salário".</div>
     <div class="card form-row">
       <button class="btn btn-primary" id="btn-rel-decimo-colaborador" data-filtro-decimo="colaborador">Por Colaborador</button>
       <button class="btn btn-dark" id="btn-rel-decimo-geral" data-filtro-decimo="geral">Geral</button>
       <button class="btn btn-dark" id="btn-rel-decimo-periodo" data-filtro-decimo="periodo">Por Período</button>
+      <button class="btn btn-dark" id="btn-rel-decimo-pdf" style="margin-left:auto">Gerar PDF</button>
     </div>
     <div class="card form-row" id="rel-decimo-filtro-colaborador-row">
       <div class="field" style="flex:1;min-width:220px">
@@ -708,7 +793,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
     </div>
     <div id="rel-decimo-container"></div>
 
-    <h1 style="margin-top:36px">Dossiê</h1>
+    <h1 style="margin-top:36px" id="rel-dossie-titulo">Dossiê</h1>
     <div class="card form-row">
       <div class="field" style="min-width:200px">
         <label>Colaborador</label>
@@ -740,14 +825,29 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <label>Até</label>
         <input type="date" id="rel-dossie-ate">
       </div>
+      <button class="btn btn-dark" id="btn-rel-dossie-pdf" style="margin-left:auto">Gerar PDF</button>
     </div>
-    <div class="card table-scroll" style="padding:0">
-      <table>
-        <thead><tr><th>Data</th><th>Colaborador</th><th>Tipo</th><th>Descrição</th></tr></thead>
-        <tbody id="rel-dossie-tbody"></tbody>
-      </table>
+    <div id="rel-dossie-container">
+      <div class="card table-scroll" style="padding:0">
+        <table>
+          <thead><tr><th>Data</th><th>Colaborador</th><th>Tipo</th><th>Descrição</th></tr></thead>
+          <tbody id="rel-dossie-tbody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
+</div>
+
+<div id="print-area">
+  <div class="print-header">
+    <img src="logo-agil.png" alt="Agil Aduaneira">
+    <div>
+      <div class="print-empresa">Setor Pessoal — Agil Aduaneira</div>
+      <div id="print-titulo"></div>
+    </div>
+  </div>
+  <div id="print-data" class="print-meta"></div>
+  <div id="print-conteudo"></div>
 </div>
 
 <script type="module">
@@ -945,7 +1045,7 @@ function iniciarApp() {
   document.querySelectorAll('[data-filtro-ferias]').forEach(btn => {
     btn.addEventListener('click', () => selecionarFiltroFerias(btn.dataset.filtroFerias));
   });
-  for (const id of ['rel-ferias-colaborador', 'rel-ferias-periodo-de', 'rel-ferias-periodo-ate']) {
+  for (const id of ['rel-ferias-colaborador', 'rel-ferias-setor', 'rel-ferias-periodo-de', 'rel-ferias-periodo-ate']) {
     document.getElementById(id).addEventListener('change', renderRelatorioFerias);
   }
   document.querySelectorAll('[data-filtro-decimo]').forEach(btn => {
@@ -957,6 +1057,29 @@ function iniciarApp() {
   for (const id of ['rel-dossie-colaborador', 'rel-dossie-tipo', 'rel-dossie-de', 'rel-dossie-ate']) {
     document.getElementById(id).addEventListener('change', renderRelatorioDossie);
   }
+
+  // ── Menu suspenso "Relatórios" (dropdown de navegação) ──────────
+  document.querySelectorAll('[data-rel-nav]').forEach(btn => {
+    btn.addEventListener('click', () => navegarParaRelatorio(btn.dataset.relNav));
+  });
+  document.getElementById('tab-btn-relatorios').addEventListener('click', () => {
+    document.getElementById('tab-relatorios-group').classList.remove('open');
+  });
+  document.addEventListener('click', (e) => {
+    const group = document.getElementById('tab-relatorios-group');
+    if (!group.contains(e.target)) group.classList.remove('open');
+  });
+
+  // ── Botões "Gerar PDF" ───────────────────────────────────────────
+  document.getElementById('btn-rel-ferias-pdf').addEventListener('click', () => {
+    gerarPDF(tituloFiltroAtualFerias(), 'rel-ferias-container');
+  });
+  document.getElementById('btn-rel-decimo-pdf').addEventListener('click', () => {
+    gerarPDF(tituloFiltroAtualDecimo(), 'rel-decimo-container');
+  });
+  document.getElementById('btn-rel-dossie-pdf').addEventListener('click', () => {
+    gerarPDF(tituloFiltroAtualDossie(), 'rel-dossie-container');
+  });
 
   document.getElementById('input-filtro-colab').addEventListener('input', (e) => {
     filtroNomeColab = e.target.value;
@@ -2532,9 +2655,11 @@ function renderSelectRelatorios() {
 }
 
 // Relatório de Férias — segue fielmente os 3 modelos que o Sidney mandou
-// (Filtro Colaborador/Período/A Vencer): um bloco por colaborador (Nome/
-// Admissão/Cargo) com a tabela de períodos dele, não uma tabela única.
-let filtroFeriasRelatorio = 'colaborador'; // 'colaborador' | 'periodo' | 'a-vencer'
+// (Filtro Colaborador/Período/A Vencer), mais Setor/Geral/Vencidas pedidos
+// depois: um bloco por colaborador (Nome/Admissão/Cargo/Setor) com a tabela
+// de períodos dele, exceto "Geral" que é uma tabela única (mesmo molde do
+// relatório Geral do 13º Salário).
+let filtroFeriasRelatorio = 'colaborador'; // 'colaborador' | 'setor' | 'periodo' | 'geral' | 'vencidas' | 'a-vencer'
 
 function selecionarFiltroFerias(filtro) {
   filtroFeriasRelatorio = filtro;
@@ -2544,6 +2669,7 @@ function selecionarFiltroFerias(filtro) {
     btn.classList.toggle('btn-dark', !ativo);
   });
   document.getElementById('rel-ferias-filtro-colaborador-row').style.display = filtro === 'colaborador' ? 'flex' : 'none';
+  document.getElementById('rel-ferias-filtro-setor-row').style.display = filtro === 'setor' ? 'flex' : 'none';
   document.getElementById('rel-ferias-filtro-periodo-row').style.display = filtro === 'periodo' ? 'flex' : 'none';
   renderRelatorioFerias();
 }
@@ -2602,10 +2728,39 @@ function renderBlocoColaboradorFerias(colaborador, entradas) {
         <div class="field" style="flex:1;min-width:200px"><label>Colaborador</label><div>${colaborador.nome}</div></div>
         <div class="field"><label>Admissão</label><div>${formatarDataBR(colaborador.dataAdmissao)}</div></div>
         <div class="field"><label>Cargo</label><div>${colaborador.areaAtuacao || '—'}</div></div>
+        <div class="field"><label>Setor</label><div>${colaborador.setor || '—'}</div></div>
       </div>
       <table style="margin-top:10px">
         <thead><tr><th>#</th><th>Período Aquisitivo</th><th>Limite até</th><th>Início férias</th><th>Término férias</th><th>Retorno</th><th>Dias Gozados</th><th>Dias Vendidos</th></tr></thead>
         <tbody>${linhas}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+// Tabela única (mesmo molde do relatório "Geral" do 13º Salário) com o
+// período vigente (pendente) de cada colaborador ativo -- usada no filtro
+// "Geral (ano vigente)".
+function renderTabelaGeralFerias(linhas) {
+  if (linhas.length === 0) return '<div class="card empty-msg">Nenhum colaborador ativo com admissão cadastrada.</div>';
+  const linhasHtml = linhas.map(({ c, numero, aquisitivo, p }) => {
+    const alerta = calcularAlertaFerias(p);
+    return `
+    <tr>
+      <td>${c.nome}</td>
+      <td>${c.setor || '—'}</td>
+      <td>${c.areaAtuacao || '—'}</td>
+      <td>${numero}ª</td>
+      <td>${aquisitivo ? `${formatarDataBR(aquisitivo.inicio)} a ${formatarDataBR(aquisitivo.fim)}` : '—'}</td>
+      <td>${p.limite ? formatarDataBR(p.limite) : '—'}</td>
+      <td><span class="badge ${alerta.classe}">${alerta.texto}</span></td>
+    </tr>`;
+  }).join('');
+  return `
+    <div class="card table-scroll" style="padding:0">
+      <table>
+        <thead><tr><th>Colaborador</th><th>Setor</th><th>Cargo</th><th>#</th><th>Período Aquisitivo</th><th>Limite até</th><th>Status</th></tr></thead>
+        <tbody>${linhasHtml}</tbody>
       </table>
     </div>
   `;
@@ -2624,6 +2779,18 @@ function renderRelatorioFerias() {
     return;
   }
 
+  if (filtroFeriasRelatorio === 'setor') {
+    const setor = document.getElementById('rel-ferias-setor').value;
+    if (!setor) { container.innerHTML = '<div class="card empty-msg">Selecione um setor.</div>'; return; }
+    const blocos = [];
+    for (const [id, c] of Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome))) {
+      if (!c.dataAdmissao || c.setor !== setor) continue;
+      blocos.push(renderBlocoColaboradorFerias(c, feriasNumeradas(id, c)));
+    }
+    container.innerHTML = blocos.length ? blocos.join('') : `<div class="card empty-msg">Nenhum colaborador no setor ${setor}.</div>`;
+    return;
+  }
+
   if (filtroFeriasRelatorio === 'periodo') {
     const de = document.getElementById('rel-ferias-periodo-de').value;
     const ate = document.getElementById('rel-ferias-periodo-ate').value;
@@ -2638,13 +2805,37 @@ function renderRelatorioFerias() {
     return;
   }
 
-  // 'a-vencer': um bloco por colaborador ativo, só com o período pendente.
+  if (filtroFeriasRelatorio === 'geral') {
+    const linhas = [];
+    for (const [id, c] of Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome))) {
+      if (!c.ativo || !c.dataAdmissao) continue;
+      linhas.push({ c, ...entradaAVencerColaborador(id, c) });
+    }
+    container.innerHTML = renderTabelaGeralFerias(linhas);
+    return;
+  }
+
+  if (filtroFeriasRelatorio === 'vencidas') {
+    const blocos = [];
+    for (const [id, c] of Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome))) {
+      if (!c.ativo || !c.dataAdmissao) continue;
+      const entrada = entradaAVencerColaborador(id, c);
+      if (calcularAlertaFerias(entrada.p).classe === 'vencido') blocos.push(renderBlocoColaboradorFerias(c, [entrada]));
+    }
+    container.innerHTML = blocos.length ? blocos.join('') : '<div class="card empty-msg">Nenhuma férias vencida no momento.</div>';
+    return;
+  }
+
+  // 'a-vencer': um bloco por colaborador ativo dentro da janela de alerta
+  // (calcularAlertaFerias === 'a-vencer'), sem incluir os já vencidos --
+  // esses ficam só no filtro "Vencidas".
   const blocos = [];
   for (const [id, c] of Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome))) {
     if (!c.ativo || !c.dataAdmissao) continue;
-    blocos.push(renderBlocoColaboradorFerias(c, [entradaAVencerColaborador(id, c)]));
+    const entrada = entradaAVencerColaborador(id, c);
+    if (calcularAlertaFerias(entrada.p).classe === 'a-vencer') blocos.push(renderBlocoColaboradorFerias(c, [entrada]));
   }
-  container.innerHTML = blocos.length ? blocos.join('') : '<div class="card empty-msg">Nenhum colaborador ativo com admissão cadastrada.</div>';
+  container.innerHTML = blocos.length ? blocos.join('') : '<div class="card empty-msg">Nenhuma férias a vencer no momento.</div>';
 }
 
 // Relatório de 13º Salário — segue os 3 modelos do Sidney (Colaborador/
@@ -2787,6 +2978,80 @@ function renderRelatorioDossie() {
       <td>${e.descricao || ''}</td>
     </tr>
   `).join('');
+}
+
+// Leva pro sub-relatório específico a partir de um item do dropdown de
+// navegação (data-rel-nav="familia:filtro"). Dossiê não tem "views"
+// separadas (os 3 filtros ficam sempre visíveis juntos) -- então só rola
+// até a seção e foca o campo correspondente.
+function navegarParaRelatorio(relNav) {
+  const [familia, filtro] = relNav.split(':');
+  document.getElementById('tab-btn-relatorios').click();
+  document.getElementById('tab-relatorios-group').classList.remove('open');
+  if (familia === 'ferias') {
+    selecionarFiltroFerias(filtro);
+    document.getElementById('rel-ferias-titulo').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else if (familia === 'decimo') {
+    selecionarFiltroDecimo(filtro);
+    document.getElementById('rel-decimo-titulo').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else if (familia === 'dossie') {
+    document.getElementById('rel-dossie-titulo').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const focoId = { colaborador: 'rel-dossie-colaborador', periodo: 'rel-dossie-de', tipo: 'rel-dossie-tipo' }[filtro];
+    if (focoId) document.getElementById(focoId).focus();
+  }
+}
+
+// ── Exportação em PDF (window.print() + @media print, sem dependência nova) ──
+function tituloFiltroAtualFerias() {
+  const nomes = { colaborador: 'Colaborador', setor: 'Setor', periodo: 'Período', geral: 'Geral (ano vigente)', vencidas: 'Vencidas', 'a-vencer': 'A vencer' };
+  let detalhe = '';
+  if (filtroFeriasRelatorio === 'colaborador') {
+    const c = colaboradoresMap.get(document.getElementById('rel-ferias-colaborador').value);
+    detalhe = c ? ` — ${c.nome}` : '';
+  } else if (filtroFeriasRelatorio === 'setor') {
+    const s = document.getElementById('rel-ferias-setor').value;
+    detalhe = s ? ` — ${s}` : '';
+  } else if (filtroFeriasRelatorio === 'periodo') {
+    const de = document.getElementById('rel-ferias-periodo-de').value;
+    const ate = document.getElementById('rel-ferias-periodo-ate').value;
+    detalhe = de && ate ? ` — ${formatarDataBR(de)} a ${formatarDataBR(ate)}` : '';
+  }
+  return `Relatório de Férias — ${nomes[filtroFeriasRelatorio]}${detalhe}`;
+}
+
+function tituloFiltroAtualDecimo() {
+  const nomes = { colaborador: 'Colaborador', geral: 'Geral', periodo: 'Período' };
+  let detalhe = '';
+  if (filtroDecimoRelatorio === 'colaborador') {
+    const c = colaboradoresMap.get(document.getElementById('rel-decimo-colaborador').value);
+    detalhe = c ? ` — ${c.nome}` : '';
+  } else if (filtroDecimoRelatorio === 'periodo') {
+    const de = document.getElementById('rel-decimo-periodo-de').value;
+    const ate = document.getElementById('rel-decimo-periodo-ate').value;
+    detalhe = de && ate ? ` — ${formatarDataBR(de)} a ${formatarDataBR(ate)}` : '';
+  }
+  return `Relatório de 13º Salário — ${nomes[filtroDecimoRelatorio]}${detalhe} (${anoAtual})`;
+}
+
+function tituloFiltroAtualDossie() {
+  const c = colaboradoresMap.get(document.getElementById('rel-dossie-colaborador').value);
+  const tipo = document.getElementById('rel-dossie-tipo').value;
+  const de = document.getElementById('rel-dossie-de').value;
+  const ate = document.getElementById('rel-dossie-ate').value;
+  const partes = [];
+  if (c) partes.push(c.nome);
+  if (tipo) partes.push(tipo);
+  if (de && ate) partes.push(`${formatarDataBR(de)} a ${formatarDataBR(ate)}`);
+  return `Relatório de Dossiê${partes.length ? ' — ' + partes.join(' · ') : ' — Todos'}`;
+}
+
+function gerarPDF(titulo, containerId) {
+  const conteudo = document.getElementById(containerId);
+  if (!conteudo || !conteudo.innerHTML.trim()) { alert('Nada para exportar com o filtro atual.'); return; }
+  document.getElementById('print-titulo').textContent = titulo;
+  document.getElementById('print-data').textContent = `Gerado em ${formatarDataBR(new Date().toISOString().slice(0, 10))}`;
+  document.getElementById('print-conteudo').innerHTML = conteudo.innerHTML;
+  window.print();
 }
 </script>
 </body>
