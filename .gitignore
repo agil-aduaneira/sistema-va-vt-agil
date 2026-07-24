@@ -1,2 +1,5 @@
 .DS_Store
 *.log
+functions/node_modules
+functions/.env
+functions/.env.*

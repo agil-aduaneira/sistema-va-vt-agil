@@ -446,9 +446,33 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
           <label>Direito padrão de férias (dias)</label>
           <input type="number" min="1" step="0.5" id="input-direito-ferias-padrao" value="30">
         </div>
+        <div class="field">
+          <label>Alertar aniversário com quantos dias úteis de antecedência</label>
+          <input type="number" step="1" min="1" id="input-dias-alerta-aniversario" value="2">
+        </div>
         <button class="btn btn-primary" id="btn-salvar-config">Salvar</button>
         <span id="config-saved" style="display:none;color:var(--green);font-size:13px">Salvo!</span>
       </div>
+    </div>
+
+    <h1 style="margin-top:36px">E-mails de Alerta</h1>
+    <div class="subtitle">Quem recebe o e-mail automático de aniversariantes chegando.</div>
+
+    <div class="card form-row">
+      <div class="field" style="flex:1;min-width:220px">
+        <label>E-mail</label>
+        <input type="email" id="input-email-alerta" placeholder="ex.: setorpessoal@agiladuaneira.com.br">
+      </div>
+      <button class="btn btn-primary" id="btn-add-email-alerta">Adicionar</button>
+      <button class="btn btn-dark" id="btn-testar-envio-aniversario" style="margin-left:auto">Testar envio agora</button>
+    </div>
+    <div id="teste-envio-resultado" style="display:none;margin-bottom:16px"></div>
+
+    <div class="card table-scroll" style="padding:0">
+      <table>
+        <thead><tr><th>E-mail</th><th></th></tr></thead>
+        <tbody id="emails-alerta-tbody"></tbody>
+      </table>
     </div>
 
     <h1 style="margin-top:36px">Transporte Intermunicipal</h1>
@@ -724,7 +748,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
   <!-- ═══ RELATÓRIOS ═══ -->
   <div class="tab-pane" id="tab-relatorios">
     <h1>Relatórios</h1>
-    <div class="subtitle">Visão consolidada de todos os colaboradores — sem precisar abrir um por um. Envio automático de alerta por e-mail fica para uma etapa seguinte.</div>
+    <div class="subtitle">Visão consolidada de todos os colaboradores — sem precisar abrir um por um. O alerta automático de aniversariantes por e-mail é configurado em Parâmetros.</div>
 
     <h1 style="margin-top:24px" id="rel-ferias-titulo">Férias</h1>
     <div class="card form-row">
@@ -973,6 +997,7 @@ function iniciarApp() {
   escutarRotas();
   escutarCargos();
   escutarConfig();
+  escutarEmailsAlerta();
   escutarLancamentosDoMes();
   carregarHistorico();
   carregarDashboard();
@@ -1040,6 +1065,8 @@ function iniciarApp() {
   document.getElementById('btn-cancelar-rota').addEventListener('click', cancelarEdicaoRota);
   document.getElementById('btn-add-cargo').addEventListener('click', criarCargo);
   document.getElementById('btn-cancelar-cargo').addEventListener('click', cancelarEdicaoCargo);
+  document.getElementById('btn-add-email-alerta').addEventListener('click', criarEmailAlerta);
+  document.getElementById('btn-testar-envio-aniversario').addEventListener('click', testarEnvioAniversario);
 
   document.querySelectorAll('[data-filtro-ferias]').forEach(btn => {
     btn.addEventListener('click', () => selecionarFiltroFerias(btn.dataset.filtroFerias));
@@ -1498,12 +1525,13 @@ async function criarColaborador() {
 function escutarConfig() {
   onSnapshot(doc(db, 'config', 'geral'), snap => {
     if (snap.exists()) {
-      config = { diasAlertaFerias: 360, asoPeriodicidadePadrao: 12, direitoFeriasPadrao: 30, ...snap.data() };
+      config = { diasAlertaFerias: 360, asoPeriodicidadePadrao: 12, direitoFeriasPadrao: 30, diasUteisAlertaAniversario: 2, ...snap.data() };
       document.getElementById('input-va').value = config.valorDiarioVA;
       document.getElementById('input-vt').value = config.valorDiarioVT;
       document.getElementById('input-dias-alerta-ferias').value = config.diasAlertaFerias;
       document.getElementById('input-aso-periodicidade-padrao').value = config.asoPeriodicidadePadrao;
       document.getElementById('input-direito-ferias-padrao').value = config.direitoFeriasPadrao;
+      document.getElementById('input-dias-alerta-aniversario').value = config.diasUteisAlertaAniversario;
       renderLancamentoTable();
       renderFeriasTable();
       renderColaboradoresTable();
@@ -1518,7 +1546,8 @@ async function salvarConfig() {
   const diasAlertaFerias = Number(document.getElementById('input-dias-alerta-ferias').value || 360);
   const asoPeriodicidadePadrao = Number(document.getElementById('input-aso-periodicidade-padrao').value || 12);
   const direitoFeriasPadrao = Number(document.getElementById('input-direito-ferias-padrao').value || 30);
-  await setDoc(doc(db, 'config', 'geral'), { valorDiarioVA, valorDiarioVT, diasAlertaFerias, asoPeriodicidadePadrao, direitoFeriasPadrao });
+  const diasUteisAlertaAniversario = Number(document.getElementById('input-dias-alerta-aniversario').value || 2);
+  await setDoc(doc(db, 'config', 'geral'), { valorDiarioVA, valorDiarioVT, diasAlertaFerias, asoPeriodicidadePadrao, direitoFeriasPadrao, diasUteisAlertaAniversario });
   const tag = document.getElementById('config-saved');
   tag.style.display = 'inline';
   setTimeout(() => tag.style.display = 'none', 2000);
@@ -1692,6 +1721,67 @@ async function criarCargo() {
   const id = 'cg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   await setDoc(doc(db, 'cargos', id), { nome });
   document.getElementById('input-cargo-nome').value = '';
+}
+
+// ── E-mails de Alerta (destinatários do alerta de aniversariantes) ─
+let emailsAlertaMap = new Map(); // id -> {email}
+
+function escutarEmailsAlerta() {
+  onSnapshot(collection(db, 'emailsAlerta'), snap => {
+    emailsAlertaMap.clear();
+    snap.forEach(d => emailsAlertaMap.set(d.id, d.data()));
+    renderEmailsAlertaTable();
+  });
+}
+
+function renderEmailsAlertaTable() {
+  const tbody = document.getElementById('emails-alerta-tbody');
+  const linhas = Array.from(emailsAlertaMap.entries()).sort((a, b) => a[1].email.localeCompare(b[1].email));
+  if (linhas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2" class="empty-msg">Nenhum e-mail cadastrado ainda.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = linhas.map(([id, e]) => `
+    <tr>
+      <td>${e.email}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn-link" data-del-email-alerta="${id}">Remover</button>
+      </td>
+    </tr>
+  `).join('');
+  tbody.querySelectorAll('[data-del-email-alerta]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Remover "${emailsAlertaMap.get(btn.dataset.delEmailAlerta)?.email}" da lista de alerta?`)) return;
+      await deleteDoc(doc(db, 'emailsAlerta', btn.dataset.delEmailAlerta));
+    });
+  });
+}
+
+async function criarEmailAlerta() {
+  const email = document.getElementById('input-email-alerta').value.trim();
+  if (!email) { alert('Informe o e-mail.'); return; }
+  const id = 'em_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  await setDoc(doc(db, 'emailsAlerta', id), { email });
+  document.getElementById('input-email-alerta').value = '';
+}
+
+async function testarEnvioAniversario() {
+  const resultadoEl = document.getElementById('teste-envio-resultado');
+  resultadoEl.style.display = 'block';
+  resultadoEl.textContent = 'Enviando...';
+  try {
+    const token = await auth.currentUser.getIdToken();
+    const resp = await fetch('https://us-central1-sistema-va-vt-agil.cloudfunctions.net/testarAlertaAniversarios', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const dados = await resp.json();
+    if (!resp.ok) { resultadoEl.textContent = `Erro: ${dados.erro || resp.statusText}`; return; }
+    resultadoEl.textContent = dados.enviado
+      ? `E-mail enviado para ${dados.destinatarios} destinatário(s), ${dados.quantidade} aniversariante(s).`
+      : `Nada enviado: ${dados.motivo}`;
+  } catch (err) {
+    resultadoEl.textContent = 'Erro ao chamar a function: ' + err.message;
+  }
 }
 
 // ── Lançamento mensal ───────────────────────────────────────────
