@@ -748,24 +748,11 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
   <!-- ═══ RELATÓRIOS ═══ -->
   <div class="tab-pane" id="tab-relatorios">
     <h1>Relatórios</h1>
-    <div class="subtitle">Visão consolidada de todos os colaboradores — sem precisar abrir um por um. O alerta automático de aniversariantes por e-mail é configurado em Parâmetros.</div>
-
-    <div class="card form-row">
-      <button class="btn btn-dark" id="btn-rel-secao-ferias" data-secao-relatorio="ferias">Férias</button>
-      <button class="btn btn-dark" id="btn-rel-secao-decimo" data-secao-relatorio="decimo">13º Salário</button>
-      <button class="btn btn-dark" id="btn-rel-secao-dossie" data-secao-relatorio="dossie">Dossiê</button>
-    </div>
 
     <div id="rel-secao-ferias">
-      <h1 style="margin-top:24px" id="rel-ferias-titulo">Férias</h1>
-      <div class="card form-row">
-        <button class="btn btn-primary" id="btn-rel-ferias-colaborador" data-filtro-ferias="colaborador">Colaborador</button>
-        <button class="btn btn-dark" id="btn-rel-ferias-setor" data-filtro-ferias="setor">Setor</button>
-        <button class="btn btn-dark" id="btn-rel-ferias-periodo" data-filtro-ferias="periodo">Período</button>
-        <button class="btn btn-dark" id="btn-rel-ferias-geral" data-filtro-ferias="geral">Geral (ano vigente)</button>
-        <button class="btn btn-dark" id="btn-rel-ferias-vencidas" data-filtro-ferias="vencidas">Vencidas</button>
-        <button class="btn btn-dark" id="btn-rel-ferias-a-vencer" data-filtro-ferias="a-vencer">A vencer</button>
-        <button class="btn btn-dark" id="btn-rel-ferias-pdf" style="margin-left:auto">Gerar PDF</button>
+      <div class="form-row" style="align-items:center;justify-content:space-between">
+        <h1 style="margin-top:24px" id="rel-ferias-titulo">Férias — Colaborador</h1>
+        <button class="btn btn-dark" id="btn-rel-ferias-pdf">Gerar PDF</button>
       </div>
       <div class="card form-row" id="rel-ferias-filtro-colaborador-row">
         <div class="field" style="flex:1;min-width:220px">
@@ -799,14 +786,11 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
     </div>
 
     <div id="rel-secao-decimo">
-      <h1 style="margin-top:36px" id="rel-decimo-titulo">13º Salário</h1>
-      <div class="subtitle">Do ano vigente selecionado na aba "13º Salário".</div>
-      <div class="card form-row">
-        <button class="btn btn-primary" id="btn-rel-decimo-colaborador" data-filtro-decimo="colaborador">Por Colaborador</button>
-        <button class="btn btn-dark" id="btn-rel-decimo-geral" data-filtro-decimo="geral">Geral</button>
-        <button class="btn btn-dark" id="btn-rel-decimo-periodo" data-filtro-decimo="periodo">Por Período</button>
-        <button class="btn btn-dark" id="btn-rel-decimo-pdf" style="margin-left:auto">Gerar PDF</button>
+      <div class="form-row" style="align-items:center;justify-content:space-between">
+        <h1 style="margin-top:36px" id="rel-decimo-titulo">13º Salário — Colaborador</h1>
+        <button class="btn btn-dark" id="btn-rel-decimo-pdf">Gerar PDF</button>
       </div>
+      <div class="subtitle">Do ano vigente selecionado na aba "13º Salário".</div>
       <div class="card form-row" id="rel-decimo-filtro-colaborador-row">
         <div class="field" style="flex:1;min-width:220px">
           <label>Colaborador</label>
@@ -1099,9 +1083,6 @@ function iniciarApp() {
   // ── Menu suspenso "Relatórios" (dropdown de navegação) ──────────
   document.querySelectorAll('[data-rel-nav]').forEach(btn => {
     btn.addEventListener('click', () => navegarParaRelatorio(btn.dataset.relNav));
-  });
-  document.querySelectorAll('[data-secao-relatorio]').forEach(btn => {
-    btn.addEventListener('click', () => mostrarSecaoRelatorio(btn.dataset.secaoRelatorio));
   });
   mostrarSecaoRelatorio(familiaRelatorioAtual);
   document.getElementById('tab-btn-relatorios').addEventListener('click', () => {
@@ -2765,6 +2746,7 @@ function renderSelectRelatorios() {
 // de períodos dele, exceto "Geral" que é uma tabela única (mesmo molde do
 // relatório Geral do 13º Salário).
 let filtroFeriasRelatorio = 'colaborador'; // 'colaborador' | 'setor' | 'periodo' | 'geral' | 'vencidas' | 'a-vencer'
+const nomesFiltroFerias = { colaborador: 'Colaborador', setor: 'Setor', periodo: 'Período', geral: 'Geral (ano vigente)', vencidas: 'Vencidas', 'a-vencer': 'A vencer' };
 
 function selecionarFiltroFerias(filtro) {
   filtroFeriasRelatorio = filtro;
@@ -2776,6 +2758,7 @@ function selecionarFiltroFerias(filtro) {
   document.getElementById('rel-ferias-filtro-colaborador-row').style.display = filtro === 'colaborador' ? 'flex' : 'none';
   document.getElementById('rel-ferias-filtro-setor-row').style.display = filtro === 'setor' ? 'flex' : 'none';
   document.getElementById('rel-ferias-filtro-periodo-row').style.display = filtro === 'periodo' ? 'flex' : 'none';
+  document.getElementById('rel-ferias-titulo').textContent = `Férias — ${nomesFiltroFerias[filtro]}`;
   renderRelatorioFerias();
 }
 
@@ -2947,6 +2930,7 @@ function renderRelatorioFerias() {
 // Geral/Período): Colaborador é bloco único; Geral e Período são a mesma
 // tabela plana com linha de TOTAIS, só mudando se filtra por data ou não.
 let filtroDecimoRelatorio = 'colaborador'; // 'colaborador' | 'geral' | 'periodo'
+const nomesFiltroDecimo = { colaborador: 'Colaborador', geral: 'Geral', periodo: 'Período' };
 
 function selecionarFiltroDecimo(filtro) {
   filtroDecimoRelatorio = filtro;
@@ -2957,6 +2941,7 @@ function selecionarFiltroDecimo(filtro) {
   });
   document.getElementById('rel-decimo-filtro-colaborador-row').style.display = filtro === 'colaborador' ? 'flex' : 'none';
   document.getElementById('rel-decimo-filtro-periodo-row').style.display = filtro === 'periodo' ? 'flex' : 'none';
+  document.getElementById('rel-decimo-titulo').textContent = `13º Salário — ${nomesFiltroDecimo[filtro]}`;
   renderRelatorioDecimo();
 }
 
@@ -3100,11 +3085,6 @@ function mostrarSecaoRelatorio(familia) {
   for (const f of ['ferias', 'decimo', 'dossie']) {
     document.getElementById(`rel-secao-${f}`).style.display = f === familia ? 'block' : 'none';
   }
-  document.querySelectorAll('[data-secao-relatorio]').forEach(btn => {
-    const ativo = btn.dataset.secaoRelatorio === familia;
-    btn.classList.toggle('btn-primary', ativo);
-    btn.classList.toggle('btn-dark', !ativo);
-  });
 }
 
 function navegarParaRelatorio(relNav) {
@@ -3127,7 +3107,7 @@ function navegarParaRelatorio(relNav) {
 
 // ── Exportação em PDF (window.print() + @media print, sem dependência nova) ──
 function tituloFiltroAtualFerias() {
-  const nomes = { colaborador: 'Colaborador', setor: 'Setor', periodo: 'Período', geral: 'Geral (ano vigente)', vencidas: 'Vencidas', 'a-vencer': 'A vencer' };
+  const nomes = nomesFiltroFerias;
   let detalhe = '';
   if (filtroFeriasRelatorio === 'colaborador') {
     const c = colaboradoresMap.get(document.getElementById('rel-ferias-colaborador').value);
@@ -3144,7 +3124,7 @@ function tituloFiltroAtualFerias() {
 }
 
 function tituloFiltroAtualDecimo() {
-  const nomes = { colaborador: 'Colaborador', geral: 'Geral', periodo: 'Período' };
+  const nomes = nomesFiltroDecimo;
   let detalhe = '';
   if (filtroDecimoRelatorio === 'colaborador') {
     const c = colaboradoresMap.get(document.getElementById('rel-decimo-colaborador').value);
