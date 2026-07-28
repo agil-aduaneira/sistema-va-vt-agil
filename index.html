@@ -750,112 +750,124 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
     <h1>Relatórios</h1>
     <div class="subtitle">Visão consolidada de todos os colaboradores — sem precisar abrir um por um. O alerta automático de aniversariantes por e-mail é configurado em Parâmetros.</div>
 
-    <h1 style="margin-top:24px" id="rel-ferias-titulo">Férias</h1>
     <div class="card form-row">
-      <button class="btn btn-primary" id="btn-rel-ferias-colaborador" data-filtro-ferias="colaborador">Colaborador</button>
-      <button class="btn btn-dark" id="btn-rel-ferias-setor" data-filtro-ferias="setor">Setor</button>
-      <button class="btn btn-dark" id="btn-rel-ferias-periodo" data-filtro-ferias="periodo">Período</button>
-      <button class="btn btn-dark" id="btn-rel-ferias-geral" data-filtro-ferias="geral">Geral (ano vigente)</button>
-      <button class="btn btn-dark" id="btn-rel-ferias-vencidas" data-filtro-ferias="vencidas">Vencidas</button>
-      <button class="btn btn-dark" id="btn-rel-ferias-a-vencer" data-filtro-ferias="a-vencer">A vencer</button>
-      <button class="btn btn-dark" id="btn-rel-ferias-pdf" style="margin-left:auto">Gerar PDF</button>
+      <button class="btn btn-dark" id="btn-rel-secao-ferias" data-secao-relatorio="ferias">Férias</button>
+      <button class="btn btn-dark" id="btn-rel-secao-decimo" data-secao-relatorio="decimo">13º Salário</button>
+      <button class="btn btn-dark" id="btn-rel-secao-dossie" data-secao-relatorio="dossie">Dossiê</button>
     </div>
-    <div class="card form-row" id="rel-ferias-filtro-colaborador-row">
-      <div class="field" style="flex:1;min-width:220px">
-        <label>Colaborador</label>
-        <select id="rel-ferias-colaborador"><option value="">Selecione...</option></select>
-      </div>
-    </div>
-    <div class="card form-row" id="rel-ferias-filtro-setor-row" style="display:none">
-      <div class="field" style="min-width:220px">
-        <label>Setor</label>
-        <select id="rel-ferias-setor">
-          <option value="">Selecione...</option>
-          <option value="Importação">Importação</option>
-          <option value="Exportação">Exportação</option>
-          <option value="Financeiro">Financeiro</option>
-          <option value="Externo">Externo</option>
-        </select>
-      </div>
-    </div>
-    <div class="card form-row" id="rel-ferias-filtro-periodo-row" style="display:none">
-      <div class="field">
-        <label>De</label>
-        <input type="date" id="rel-ferias-periodo-de">
-      </div>
-      <div class="field">
-        <label>Até</label>
-        <input type="date" id="rel-ferias-periodo-ate">
-      </div>
-    </div>
-    <div id="rel-ferias-container"></div>
 
-    <h1 style="margin-top:36px" id="rel-decimo-titulo">13º Salário</h1>
-    <div class="subtitle">Do ano vigente selecionado na aba "13º Salário".</div>
-    <div class="card form-row">
-      <button class="btn btn-primary" id="btn-rel-decimo-colaborador" data-filtro-decimo="colaborador">Por Colaborador</button>
-      <button class="btn btn-dark" id="btn-rel-decimo-geral" data-filtro-decimo="geral">Geral</button>
-      <button class="btn btn-dark" id="btn-rel-decimo-periodo" data-filtro-decimo="periodo">Por Período</button>
-      <button class="btn btn-dark" id="btn-rel-decimo-pdf" style="margin-left:auto">Gerar PDF</button>
-    </div>
-    <div class="card form-row" id="rel-decimo-filtro-colaborador-row">
-      <div class="field" style="flex:1;min-width:220px">
-        <label>Colaborador</label>
-        <select id="rel-decimo-colaborador"><option value="">Selecione...</option></select>
+    <div id="rel-secao-ferias">
+      <h1 style="margin-top:24px" id="rel-ferias-titulo">Férias</h1>
+      <div class="card form-row">
+        <button class="btn btn-primary" id="btn-rel-ferias-colaborador" data-filtro-ferias="colaborador">Colaborador</button>
+        <button class="btn btn-dark" id="btn-rel-ferias-setor" data-filtro-ferias="setor">Setor</button>
+        <button class="btn btn-dark" id="btn-rel-ferias-periodo" data-filtro-ferias="periodo">Período</button>
+        <button class="btn btn-dark" id="btn-rel-ferias-geral" data-filtro-ferias="geral">Geral (ano vigente)</button>
+        <button class="btn btn-dark" id="btn-rel-ferias-vencidas" data-filtro-ferias="vencidas">Vencidas</button>
+        <button class="btn btn-dark" id="btn-rel-ferias-a-vencer" data-filtro-ferias="a-vencer">A vencer</button>
+        <button class="btn btn-dark" id="btn-rel-ferias-pdf" style="margin-left:auto">Gerar PDF</button>
       </div>
-    </div>
-    <div class="card form-row" id="rel-decimo-filtro-periodo-row" style="display:none">
-      <div class="field">
-        <label>De</label>
-        <input type="date" id="rel-decimo-periodo-de">
+      <div class="card form-row" id="rel-ferias-filtro-colaborador-row">
+        <div class="field" style="flex:1;min-width:220px">
+          <label>Colaborador</label>
+          <select id="rel-ferias-colaborador"><option value="">Selecione...</option></select>
+        </div>
       </div>
-      <div class="field">
-        <label>Até</label>
-        <input type="date" id="rel-decimo-periodo-ate">
+      <div class="card form-row" id="rel-ferias-filtro-setor-row" style="display:none">
+        <div class="field" style="min-width:220px">
+          <label>Setor</label>
+          <select id="rel-ferias-setor">
+            <option value="">Selecione...</option>
+            <option value="Importação">Importação</option>
+            <option value="Exportação">Exportação</option>
+            <option value="Financeiro">Financeiro</option>
+            <option value="Externo">Externo</option>
+          </select>
+        </div>
       </div>
+      <div class="card form-row" id="rel-ferias-filtro-periodo-row" style="display:none">
+        <div class="field">
+          <label>De</label>
+          <input type="date" id="rel-ferias-periodo-de">
+        </div>
+        <div class="field">
+          <label>Até</label>
+          <input type="date" id="rel-ferias-periodo-ate">
+        </div>
+      </div>
+      <div id="rel-ferias-container"></div>
     </div>
-    <div id="rel-decimo-container"></div>
 
-    <h1 style="margin-top:36px" id="rel-dossie-titulo">Dossiê</h1>
-    <div class="card form-row">
-      <div class="field" style="min-width:200px">
-        <label>Colaborador</label>
-        <select id="rel-dossie-colaborador"><option value="">Todos</option></select>
+    <div id="rel-secao-decimo">
+      <h1 style="margin-top:36px" id="rel-decimo-titulo">13º Salário</h1>
+      <div class="subtitle">Do ano vigente selecionado na aba "13º Salário".</div>
+      <div class="card form-row">
+        <button class="btn btn-primary" id="btn-rel-decimo-colaborador" data-filtro-decimo="colaborador">Por Colaborador</button>
+        <button class="btn btn-dark" id="btn-rel-decimo-geral" data-filtro-decimo="geral">Geral</button>
+        <button class="btn btn-dark" id="btn-rel-decimo-periodo" data-filtro-decimo="periodo">Por Período</button>
+        <button class="btn btn-dark" id="btn-rel-decimo-pdf" style="margin-left:auto">Gerar PDF</button>
       </div>
-      <div class="field" style="min-width:200px">
-        <label>Tipo</label>
-        <select id="rel-dossie-tipo">
-          <option value="">Todos</option>
-          <option value="Mudança de cargo">Mudança de cargo</option>
-          <option value="Mudança de salário">Mudança de salário</option>
-          <option value="Atraso">Atraso</option>
-          <option value="Falta">Falta</option>
-          <option value="Atestado">Atestado</option>
-          <option value="Ocorrência">Ocorrência</option>
-          <option value="Feedback">Feedback</option>
-          <option value="Multa / Erros">Multa / Erros</option>
-          <option value="Advertência">Advertência</option>
-          <option value="Qualidade">Qualidade</option>
-          <option value="Vulnerabilidade">Vulnerabilidade</option>
-          <option value="Outro">Outro</option>
-        </select>
+      <div class="card form-row" id="rel-decimo-filtro-colaborador-row">
+        <div class="field" style="flex:1;min-width:220px">
+          <label>Colaborador</label>
+          <select id="rel-decimo-colaborador"><option value="">Selecione...</option></select>
+        </div>
       </div>
-      <div class="field">
-        <label>De</label>
-        <input type="date" id="rel-dossie-de">
+      <div class="card form-row" id="rel-decimo-filtro-periodo-row" style="display:none">
+        <div class="field">
+          <label>De</label>
+          <input type="date" id="rel-decimo-periodo-de">
+        </div>
+        <div class="field">
+          <label>Até</label>
+          <input type="date" id="rel-decimo-periodo-ate">
+        </div>
       </div>
-      <div class="field">
-        <label>Até</label>
-        <input type="date" id="rel-dossie-ate">
-      </div>
-      <button class="btn btn-dark" id="btn-rel-dossie-pdf" style="margin-left:auto">Gerar PDF</button>
+      <div id="rel-decimo-container"></div>
     </div>
-    <div id="rel-dossie-container">
-      <div class="card table-scroll" style="padding:0">
-        <table>
-          <thead><tr><th>Data</th><th>Colaborador</th><th>Tipo</th><th>Descrição</th></tr></thead>
-          <tbody id="rel-dossie-tbody"></tbody>
-        </table>
+
+    <div id="rel-secao-dossie">
+      <h1 style="margin-top:36px" id="rel-dossie-titulo">Dossiê</h1>
+      <div class="card form-row">
+        <div class="field" style="min-width:200px">
+          <label>Colaborador</label>
+          <select id="rel-dossie-colaborador"><option value="">Todos</option></select>
+        </div>
+        <div class="field" style="min-width:200px">
+          <label>Tipo</label>
+          <select id="rel-dossie-tipo">
+            <option value="">Todos</option>
+            <option value="Mudança de cargo">Mudança de cargo</option>
+            <option value="Mudança de salário">Mudança de salário</option>
+            <option value="Atraso">Atraso</option>
+            <option value="Falta">Falta</option>
+            <option value="Atestado">Atestado</option>
+            <option value="Ocorrência">Ocorrência</option>
+            <option value="Feedback">Feedback</option>
+            <option value="Multa / Erros">Multa / Erros</option>
+            <option value="Advertência">Advertência</option>
+            <option value="Qualidade">Qualidade</option>
+            <option value="Vulnerabilidade">Vulnerabilidade</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>De</label>
+          <input type="date" id="rel-dossie-de">
+        </div>
+        <div class="field">
+          <label>Até</label>
+          <input type="date" id="rel-dossie-ate">
+        </div>
+        <button class="btn btn-dark" id="btn-rel-dossie-pdf" style="margin-left:auto">Gerar PDF</button>
+      </div>
+      <div id="rel-dossie-container">
+        <div class="card table-scroll" style="padding:0">
+          <table>
+            <thead><tr><th>Data</th><th>Colaborador</th><th>Tipo</th><th>Descrição</th></tr></thead>
+            <tbody id="rel-dossie-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -1088,6 +1100,10 @@ function iniciarApp() {
   document.querySelectorAll('[data-rel-nav]').forEach(btn => {
     btn.addEventListener('click', () => navegarParaRelatorio(btn.dataset.relNav));
   });
+  document.querySelectorAll('[data-secao-relatorio]').forEach(btn => {
+    btn.addEventListener('click', () => mostrarSecaoRelatorio(btn.dataset.secaoRelatorio));
+  });
+  mostrarSecaoRelatorio(familiaRelatorioAtual);
   document.getElementById('tab-btn-relatorios').addEventListener('click', () => {
     document.getElementById('tab-relatorios-group').classList.remove('open');
   });
@@ -3073,10 +3089,29 @@ function renderRelatorioDossie() {
 // navegação (data-rel-nav="familia:filtro"). Dossiê não tem "views"
 // separadas (os 3 filtros ficam sempre visíveis juntos) -- então só rola
 // até a seção e foca o campo correspondente.
+// Mostra só a família de relatório escolhida (Férias/13º/Dossiê), escondendo
+// as outras duas -- antes as três ficavam sempre visíveis empilhadas.
+// Lembra a última família vista (familiaRelatorioAtual) pra quando o usuário
+// entra na aba "Relatórios" direto, sem passar pelo menu suspenso.
+let familiaRelatorioAtual = 'ferias';
+
+function mostrarSecaoRelatorio(familia) {
+  familiaRelatorioAtual = familia;
+  for (const f of ['ferias', 'decimo', 'dossie']) {
+    document.getElementById(`rel-secao-${f}`).style.display = f === familia ? 'block' : 'none';
+  }
+  document.querySelectorAll('[data-secao-relatorio]').forEach(btn => {
+    const ativo = btn.dataset.secaoRelatorio === familia;
+    btn.classList.toggle('btn-primary', ativo);
+    btn.classList.toggle('btn-dark', !ativo);
+  });
+}
+
 function navegarParaRelatorio(relNav) {
   const [familia, filtro] = relNav.split(':');
   document.getElementById('tab-btn-relatorios').click();
   document.getElementById('tab-relatorios-group').classList.remove('open');
+  mostrarSecaoRelatorio(familia);
   if (familia === 'ferias') {
     selecionarFiltroFerias(filtro);
     document.getElementById('rel-ferias-titulo').scrollIntoView({ behavior: 'smooth', block: 'start' });
