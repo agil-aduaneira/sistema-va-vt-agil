@@ -2030,12 +2030,15 @@ function atualizarStatsDashboard() {
 
   const statFerias = document.getElementById('stat-ferias-a-vencer');
   if (statFerias) {
+    // Mesma lógica do relatório "A vencer"/"Vencidas" (entradaAVencerColaborador
+    // + calcularAlertaFerias sobre o período real) -- antes este card recalculava
+    // por conta própria descartando gozadaInicio (`{ limite, gozadaInicio: null }`),
+    // o que contava período "Programada" (já agendado, data futura) como se
+    // não tivesse plano nenhum, inflando a contagem em relação ao relatório.
     const aVencer = Array.from(colaboradoresMap.entries())
-      .filter(([, c]) => c.ativo)
+      .filter(([, c]) => c.ativo && c.dataAdmissao)
       .filter(([id, c]) => {
-        const limite = proximoLimiteFeriasColaborador(id, c);
-        if (!limite) return false;
-        const alerta = calcularAlertaFerias({ limite, gozadaInicio: null });
+        const alerta = calcularAlertaFerias(entradaAVencerColaborador(id, c).p);
         return alerta.classe === 'vencido' || alerta.classe === 'a-vencer';
       }).length;
     statFerias.textContent = aVencer;
@@ -2053,19 +2056,6 @@ function atualizarStatsDashboard() {
       ? 'Nenhum aniversariante neste mês.'
       : aniversariantes.map(a => `${String(a.dia).padStart(2, '0')} — ${a.nome}`).join('<br>');
   }
-}
-
-// Próxima data limite de férias de um colaborador: usa o período já cadastrado
-// e ainda não gozado com o limite mais próximo; se não houver nenhum (ou todos
-// já gozados), calcula automaticamente o próximo (mesma regra do formulário).
-function proximoLimiteFeriasColaborador(colaboradorId, colaborador) {
-  if (!colaborador?.dataAdmissao) return null;
-  const periodos = todasFeriasMap.get(colaboradorId) || [];
-  const pendente = periodos
-    .filter(periodoAindaPendente)
-    .sort((a, b) => (a.limite || '').localeCompare(b.limite || ''))[0];
-  if (pendente) return pendente.limite;
-  return calcularLimiteFerias(colaborador.dataAdmissao, contarPeriodosAquisitivosDistintos(periodos) + 1);
 }
 
 async function carregarDashboard() {
