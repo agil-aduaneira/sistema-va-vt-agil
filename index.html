@@ -2062,7 +2062,7 @@ function proximoLimiteFeriasColaborador(colaboradorId, colaborador) {
   if (!colaborador?.dataAdmissao) return null;
   const periodos = todasFeriasMap.get(colaboradorId) || [];
   const pendente = periodos
-    .filter(p => !p.gozadaInicio)
+    .filter(periodoAindaPendente)
     .sort((a, b) => (a.limite || '').localeCompare(b.limite || ''))[0];
   if (pendente) return pendente.limite;
   return calcularLimiteFerias(colaborador.dataAdmissao, contarPeriodosAquisitivosDistintos(periodos) + 1);
@@ -2358,6 +2358,22 @@ function calcularAlertaFerias(p) {
   if (dias < 0) return { texto: 'Vencido', classe: 'vencido' };
   if (dias <= (config.diasAlertaFerias ?? 360)) return { texto: `Atenção (${dias}d)`, classe: 'a-vencer' };
   return { texto: 'OK', classe: 'ativo' };
+}
+
+// Um período só está "resolvido" (não precisa mais ser tratado como o
+// vigente) quando já foi realmente gozado -- gozadaInicio preenchida E já
+// passada (gozadaFim, se houver, também no passado). Um período "Programada"
+// (gozadaInicio no futuro) continua pendente: antes, qualquer gozadaInicio
+// preenchida (mesmo futura) já excluía o período da checagem de "próximo
+// vencimento", fazendo o sistema pular pro período seguinte (ainda nem
+// criado) e sintetizar uma data bem mais distante -- escondendo o vencimento
+// real de quem já tem férias agendadas pra breve.
+function periodoAindaPendente(p) {
+  if (!p.gozadaInicio) return true;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const fim = new Date((p.gozadaFim || p.gozadaInicio) + 'T00:00:00');
+  return fim >= hoje;
 }
 
 function renderFeriasTable() {
@@ -2786,7 +2802,7 @@ function feriasNumeradas(colaboradorId, colaborador) {
 // houver nenhum cadastrado, sintetiza o próximo (mesma regra do formulário).
 function entradaAVencerColaborador(colaboradorId, colaborador) {
   const numeradas = feriasNumeradas(colaboradorId, colaborador);
-  const pendente = numeradas.filter(e => !e.p.gozadaInicio)
+  const pendente = numeradas.filter(e => periodoAindaPendente(e.p))
     .sort((a, b) => (a.p.limite || '').localeCompare(b.p.limite || ''))[0];
   if (pendente) return pendente;
   const numeroProximo = (numeradas[numeradas.length - 1]?.numero ?? 0) + 1;
