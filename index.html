@@ -2328,26 +2328,31 @@ function renderSelectFeriasColaborador() {
 }
 
 function calcularAlertaFerias(p) {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
   if (p.gozadaInicio) {
-    // Distingue período programado (data futura), em andamento (hoje está
-    // dentro do intervalo) e realmente gozado (já passou) -- antes qualquer
-    // data preenchida em "Início férias" virava "Gozada", mesmo no futuro.
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    // Distingue em andamento (hoje está dentro do intervalo) de realmente
+    // gozado (já passou) -- antes qualquer data preenchida em "Início
+    // férias" virava "Gozada", mesmo no futuro.
     const inicio = new Date(p.gozadaInicio + 'T00:00:00');
     const fim = p.gozadaFim ? new Date(p.gozadaFim + 'T00:00:00') : inicio;
-    if (hoje < inicio) return { texto: 'Programada', classe: 'inativo' };
-    if (hoje <= fim) return { texto: 'Em andamento', classe: 'a-vencer' };
-    return { texto: 'Gozada', classe: 'ativo' };
+    if (hoje >= inicio && hoje <= fim) return { texto: 'Em andamento', classe: 'a-vencer' };
+    if (hoje > fim) return { texto: 'Gozada', classe: 'ativo' };
+    // hoje < inicio: agendada pro futuro. Mesmo assim continua sendo
+    // classificada pela proximidade do LIMITE legal logo abaixo -- só ter
+    // uma data marcada não deve esconder um vencimento próximo (ex.: início
+    // marcado daqui a 3 dias é tão urgente quanto um período sem data
+    // nenhuma cujo limite esteja próximo).
   }
   if (!p.limite) return { texto: '—', classe: 'inativo' };
   const limite = new Date(p.limite + 'T00:00:00');
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
   const dias = Math.round((limite - hoje) / 86400000);
+  const programada = !!p.gozadaInicio;
   if (dias < 0) return { texto: 'Vencido', classe: 'vencido' };
-  if (dias <= (config.diasAlertaFerias ?? 360)) return { texto: `Atenção (${dias}d)`, classe: 'a-vencer' };
-  return { texto: 'OK', classe: 'ativo' };
+  if (dias <= (config.diasAlertaFerias ?? 360)) {
+    return programada ? { texto: `Programada (${dias}d)`, classe: 'a-vencer' } : { texto: `Atenção (${dias}d)`, classe: 'a-vencer' };
+  }
+  return programada ? { texto: 'Programada', classe: 'inativo' } : { texto: 'OK', classe: 'ativo' };
 }
 
 // Um período só está "resolvido" (não precisa mais ser tratado como o
