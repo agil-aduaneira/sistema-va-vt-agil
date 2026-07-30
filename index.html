@@ -2915,26 +2915,31 @@ function renderRelatorioFerias() {
   }
 
   if (filtroFeriasRelatorio === 'vencidas') {
-    const blocos = [];
-    for (const [id, c] of Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome))) {
-      if (!c.ativo || !c.dataAdmissao) continue;
-      const entrada = entradaAVencerColaborador(id, c);
-      if (calcularAlertaFerias(entrada.p).classe === 'vencido') blocos.push(renderBlocoColaboradorFerias(c, [entrada]));
-    }
-    container.innerHTML = blocos.length ? blocos.join('') : '<div class="card empty-msg">Nenhuma férias vencida no momento.</div>';
+    // Ordenado do limite mais antigo (vencido há mais tempo) pro mais
+    // recente -- prioriza quem está esperando resolução há mais tempo.
+    const encontrados = Array.from(colaboradoresMap.entries())
+      .filter(([, c]) => c.ativo && c.dataAdmissao)
+      .map(([id, c]) => ({ c, entrada: entradaAVencerColaborador(id, c) }))
+      .filter(({ entrada }) => calcularAlertaFerias(entrada.p).classe === 'vencido')
+      .sort((a, b) => (a.entrada.p.limite || '').localeCompare(b.entrada.p.limite || ''));
+    container.innerHTML = encontrados.length
+      ? encontrados.map(({ c, entrada }) => renderBlocoColaboradorFerias(c, [entrada])).join('')
+      : '<div class="card empty-msg">Nenhuma férias vencida no momento.</div>';
     return;
   }
 
   // 'a-vencer': um bloco por colaborador ativo dentro da janela de alerta
   // (calcularAlertaFerias === 'a-vencer'), sem incluir os já vencidos --
-  // esses ficam só no filtro "Vencidas".
-  const blocos = [];
-  for (const [id, c] of Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome))) {
-    if (!c.ativo || !c.dataAdmissao) continue;
-    const entrada = entradaAVencerColaborador(id, c);
-    if (calcularAlertaFerias(entrada.p).classe === 'a-vencer') blocos.push(renderBlocoColaboradorFerias(c, [entrada]));
-  }
-  container.innerHTML = blocos.length ? blocos.join('') : '<div class="card empty-msg">Nenhuma férias a vencer no momento.</div>';
+  // esses ficam só no filtro "Vencidas". Ordenado do limite mais próximo
+  // pro mais distante, pra priorizar quem vence primeiro.
+  const encontrados = Array.from(colaboradoresMap.entries())
+    .filter(([, c]) => c.ativo && c.dataAdmissao)
+    .map(([id, c]) => ({ c, entrada: entradaAVencerColaborador(id, c) }))
+    .filter(({ entrada }) => calcularAlertaFerias(entrada.p).classe === 'a-vencer')
+    .sort((a, b) => (a.entrada.p.limite || '').localeCompare(b.entrada.p.limite || ''));
+  container.innerHTML = encontrados.length
+    ? encontrados.map(({ c, entrada }) => renderBlocoColaboradorFerias(c, [entrada])).join('')
+    : '<div class="card empty-msg">Nenhuma férias a vencer no momento.</div>';
 }
 
 // Relatório de 13º Salário — segue os 3 modelos do Sidney (Colaborador/
