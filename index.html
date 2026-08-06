@@ -688,6 +688,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
           <option value="Atraso">Atraso</option>
           <option value="Falta">Falta</option>
           <option value="Atestado">Atestado</option>
+          <option value="Declaração de Consulta">Declaração de Consulta</option>
           <option value="Ocorrência">Ocorrência</option>
           <option value="Feedback">Feedback</option>
           <option value="Multa / Erros">Multa / Erros</option>
@@ -826,6 +827,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
             <option value="Atraso">Atraso</option>
             <option value="Falta">Falta</option>
             <option value="Atestado">Atestado</option>
+            <option value="Declaração de Consulta">Declaração de Consulta</option>
             <option value="Ocorrência">Ocorrência</option>
             <option value="Feedback">Feedback</option>
             <option value="Multa / Erros">Multa / Erros</option>
@@ -987,6 +989,11 @@ let selecionadosColab = new Set();
 let config = { valorDiarioVA: 0, valorDiarioVT: 0, diasAlertaFerias: 360, asoPeriodicidadePadrao: 12, direitoFeriasPadrao: 30 };
 let mesAtual = mesAtualStr();
 let unsubLancamentos = null;
+
+// "Declaração de Consulta" reusa o mesmo campo de upload do "Atestado"
+// (pedido do Wellington: precisa subir a declaração em PDF que o
+// colaborador entrega, mesmo fluxo, só um nome diferente no Tipo).
+const TIPOS_DOSSIE_COM_ANEXO = ['Atestado', 'Declaração de Consulta', 'Feedback'];
 
 function iniciarApp() {
   escutarColaboradores();
@@ -1178,7 +1185,7 @@ function iniciarApp() {
     const ehMudancaCargo = tipo === 'Mudança de cargo';
     const ehMudancaSalario = tipo === 'Mudança de salário';
     const ehMudanca = ehMudancaCargo || ehMudancaSalario;
-    document.getElementById('campo-dossie-anexo').style.display = (tipo === 'Atestado' || tipo === 'Feedback') ? 'flex' : 'none';
+    document.getElementById('campo-dossie-anexo').style.display = TIPOS_DOSSIE_COM_ANEXO.includes(tipo) ? 'flex' : 'none';
     document.getElementById('campo-dossie-descricao').style.display = ehMudanca ? 'none' : 'flex';
     document.getElementById('campo-dossie-cargo-de').style.display = ehMudancaCargo ? 'flex' : 'none';
     document.getElementById('campo-dossie-cargo-para').style.display = ehMudancaCargo ? 'flex' : 'none';
@@ -2712,7 +2719,7 @@ async function criarRegistroDossie() {
     // Ao editar, sem escolher um novo arquivo, mantém o anexo que já existia
     // (não dá pra pré-carregar um <input type="file"> por segurança do navegador).
     let anexoUrl = editandoDossieId ? (dossieEventos.get(editandoDossieId)?.anexoUrl ?? null) : null;
-    if ((tipo === 'Atestado' || tipo === 'Feedback') && arquivo) {
+    if (TIPOS_DOSSIE_COM_ANEXO.includes(tipo) && arquivo) {
       const caminho = `dossie/${colaboradorId}/${Date.now()}_${arquivo.name}`;
       const storageRef = ref(storage, caminho);
       await uploadBytes(storageRef, arquivo);
@@ -2865,6 +2872,36 @@ function renderTabelaGeralFerias(linhas) {
   `;
 }
 
+// Tabela única com 1 cabeçalho (não 1 card por colaborador) -- usada em
+// "Vencidas"/"A vencer", que sempre têm exatamente 1 período por
+// colaborador (o vigente), então cabem numa única linha cada.
+function renderTabelaListaFerias(linhas) {
+  const linhasHtml = linhas.map(({ c, p, numero, aquisitivo }) => `
+    <tr>
+      <td>${c.nome}</td>
+      <td>${formatarDataBR(c.dataAdmissao)}</td>
+      <td>${c.areaAtuacao || '—'}</td>
+      <td>${c.setor || '—'}</td>
+      <td>${numero}ª</td>
+      <td>${aquisitivo ? `${formatarDataBR(aquisitivo.inicio)} a ${formatarDataBR(aquisitivo.fim)}` : '—'}</td>
+      <td>${p.limite ? formatarDataBR(p.limite) : '—'}</td>
+      <td>${p.gozadaInicio ? formatarDataBR(p.gozadaInicio) : '—'}</td>
+      <td>${p.gozadaFim ? formatarDataBR(p.gozadaFim) : '—'}</td>
+      <td>${p.retorno ? formatarDataBR(p.retorno) : '—'}</td>
+      <td>${p.diasGozados ?? '—'}</td>
+      <td>—</td>
+    </tr>
+  `).join('');
+  return `
+    <div class="card table-scroll" style="padding:0">
+      <table>
+        <thead><tr><th>Colaborador</th><th>Admissão</th><th>Cargo</th><th>Setor</th><th>#</th><th>Período Aquisitivo</th><th>Limite até</th><th>Início férias</th><th>Término férias</th><th>Retorno</th><th>Dias Gozados</th><th>Dias Vendidos</th></tr></thead>
+        <tbody>${linhasHtml}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 function renderRelatorioFerias() {
   const container = document.getElementById('rel-ferias-container');
   if (!container) return;
@@ -2919,26 +2956,26 @@ function renderRelatorioFerias() {
     // recente -- prioriza quem está esperando resolução há mais tempo.
     const encontrados = Array.from(colaboradoresMap.entries())
       .filter(([, c]) => c.ativo && c.dataAdmissao)
-      .map(([id, c]) => ({ c, entrada: entradaAVencerColaborador(id, c) }))
-      .filter(({ entrada }) => calcularAlertaFerias(entrada.p).classe === 'vencido')
-      .sort((a, b) => (a.entrada.p.limite || '').localeCompare(b.entrada.p.limite || ''));
+      .map(([id, c]) => ({ c, ...entradaAVencerColaborador(id, c) }))
+      .filter(({ p }) => calcularAlertaFerias(p).classe === 'vencido')
+      .sort((a, b) => (a.p.limite || '').localeCompare(b.p.limite || ''));
     container.innerHTML = encontrados.length
-      ? encontrados.map(({ c, entrada }) => renderBlocoColaboradorFerias(c, [entrada])).join('')
+      ? renderTabelaListaFerias(encontrados)
       : '<div class="card empty-msg">Nenhuma férias vencida no momento.</div>';
     return;
   }
 
-  // 'a-vencer': um bloco por colaborador ativo dentro da janela de alerta
-  // (calcularAlertaFerias === 'a-vencer'), sem incluir os já vencidos --
-  // esses ficam só no filtro "Vencidas". Ordenado do limite mais próximo
-  // pro mais distante, pra priorizar quem vence primeiro.
+  // 'a-vencer': tabela única com 1 linha por colaborador ativo dentro da
+  // janela de alerta (calcularAlertaFerias === 'a-vencer'), sem incluir os
+  // já vencidos -- esses ficam só no filtro "Vencidas". Ordenado do limite
+  // mais próximo pro mais distante, pra priorizar quem vence primeiro.
   const encontrados = Array.from(colaboradoresMap.entries())
     .filter(([, c]) => c.ativo && c.dataAdmissao)
-    .map(([id, c]) => ({ c, entrada: entradaAVencerColaborador(id, c) }))
-    .filter(({ entrada }) => calcularAlertaFerias(entrada.p).classe === 'a-vencer')
-    .sort((a, b) => (a.entrada.p.limite || '').localeCompare(b.entrada.p.limite || ''));
+    .map(([id, c]) => ({ c, ...entradaAVencerColaborador(id, c) }))
+    .filter(({ p }) => calcularAlertaFerias(p).classe === 'a-vencer')
+    .sort((a, b) => (a.p.limite || '').localeCompare(b.p.limite || ''));
   container.innerHTML = encontrados.length
-    ? encontrados.map(({ c, entrada }) => renderBlocoColaboradorFerias(c, [entrada])).join('')
+    ? renderTabelaListaFerias(encontrados)
     : '<div class="card empty-msg">Nenhuma férias a vencer no momento.</div>';
 }
 
