@@ -176,6 +176,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
     <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
     <button class="tab-btn" data-tab="lancamento">Lançamento Mensal</button>
     <button class="tab-btn" data-tab="colaboradores">Colaboradores</button>
+    <button class="tab-btn" data-tab="colaboradores-inativos">Colaboradores Inativos</button>
     <button class="tab-btn" data-tab="parametros">Parâmetros</button>
     <button class="tab-btn" data-tab="historico">Histórico</button>
     <button class="tab-btn" data-tab="ferias">Férias</button>
@@ -343,6 +344,10 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <input type="date" id="input-admissao-colab">
       </div>
       <div class="field">
+        <label>Data de demissão</label>
+        <input type="date" id="input-demissao-colab" title="Preencher move o colaborador para a aba 'Colaboradores Inativos', mantendo todo o histórico.">
+      </div>
+      <div class="field">
         <label>Salário base</label>
         <input type="number" step="0.01" id="input-salario">
       </div>
@@ -415,6 +420,30 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
           </tr>
         </thead>
         <tbody id="colaboradores-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ COLABORADORES INATIVOS ═══ -->
+  <div class="tab-pane" id="tab-colaboradores-inativos">
+    <h1>Colaboradores Inativos</h1>
+    <div class="subtitle">Colaboradores desligados (com data de demissão preenchida) — histórico completo (Férias/13º/Dossiê) continua disponível.</div>
+
+    <div class="card form-row">
+      <div class="field" style="flex:1">
+        <label>Filtrar por nome</label>
+        <input type="text" id="input-filtro-colab-inativos" placeholder="Digite parte do nome...">
+      </div>
+    </div>
+
+    <div class="card table-scroll" style="padding:0">
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th><th>Cargo</th><th>Setor</th><th>Admissão</th><th>Demissão</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="colaboradores-inativos-tbody"></tbody>
       </table>
     </div>
   </div>
@@ -1115,6 +1144,10 @@ function iniciarApp() {
     filtroNomeColab = e.target.value;
     aplicarFocoColaborador();
   });
+  document.getElementById('input-filtro-colab-inativos').addEventListener('input', (e) => {
+    filtroNomeColabInativos = e.target.value;
+    renderColaboradoresInativosTable();
+  });
   document.getElementById('chk-select-all-colab').addEventListener('change', (e) => {
     const marcarTodos = e.target.checked;
     selecionadosColab.clear();
@@ -1216,6 +1249,7 @@ function escutarColaboradores() {
     colaboradoresMap.clear();
     snap.forEach(d => colaboradoresMap.set(d.id, d.data()));
     renderColaboradoresTable();
+    renderColaboradoresInativosTable();
     renderSelectAddColaborador();
     renderSelectFeriasColaborador();
     renderSelectDossieColaborador();
@@ -1246,9 +1280,11 @@ function calcularStatusASO(c) {
 
 function renderColaboradoresTable() {
   const tbody = document.getElementById('colaboradores-tbody');
-  const linhas = Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
+  // Só ativos aqui -- quem tem dataDemissao preenchida (ou foi desativado
+  // manualmente) passa a integrar só a aba "Colaboradores Inativos".
+  const linhas = Array.from(colaboradoresMap.entries()).filter(([, c]) => c.ativo).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
   if (linhas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="12" class="empty-msg">Nenhum colaborador cadastrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="empty-msg">Nenhum colaborador ativo cadastrado ainda.</td></tr>';
     return;
   }
   tbody.innerHTML = linhas.map(([id, c]) => {
@@ -1338,6 +1374,65 @@ function renderColaboradoresTable() {
     });
   });
   aplicarFocoColaborador();
+}
+
+let filtroNomeColabInativos = '';
+
+function renderColaboradoresInativosTable() {
+  const tbody = document.getElementById('colaboradores-inativos-tbody');
+  const termo = filtroNomeColabInativos.trim().toLowerCase();
+  const linhas = Array.from(colaboradoresMap.entries())
+    .filter(([, c]) => !c.ativo)
+    .filter(([, c]) => !termo || c.nome.toLowerCase().includes(termo))
+    .sort((a, b) => a[1].nome.localeCompare(b[1].nome));
+  if (linhas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Nenhum colaborador inativo.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = linhas.map(([id, c]) => `
+    <tr>
+      <td>${c.nome}</td>
+      <td>${c.areaAtuacao || '—'}</td>
+      <td>${c.setor || '—'}</td>
+      <td>${c.dataAdmissao ? formatarDataBR(c.dataAdmissao) : '—'}</td>
+      <td>${c.dataDemissao ? formatarDataBR(c.dataDemissao) : '—'}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn-link" style="color:var(--blue)" data-goto-ferias-inativo="${id}" title="Ver férias">Férias</button>
+        <button class="btn-link" style="color:var(--blue)" data-goto-decimo-inativo="${id}" title="Ver 13º salário">13º</button>
+        <button class="btn-link" style="color:var(--blue)" data-goto-dossie-inativo="${id}" title="Ver dossiê">Dossiê</button>
+        <button class="btn-link" style="color:var(--blue)" data-edit-id-inativo="${id}">Editar</button>
+        <button class="btn-link" style="color:var(--green)" data-reativar-id="${id}">Reativar</button>
+        <button class="btn-link" data-del-id-inativo="${id}">Excluir</button>
+      </td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('[data-goto-ferias-inativo]').forEach(btn => {
+    btn.addEventListener('click', () => irParaColaboradorEm('ferias', btn.dataset.gotoFeriasInativo));
+  });
+  tbody.querySelectorAll('[data-goto-decimo-inativo]').forEach(btn => {
+    btn.addEventListener('click', () => irParaColaboradorEm('decimo', btn.dataset.gotoDecimoInativo));
+  });
+  tbody.querySelectorAll('[data-goto-dossie-inativo]').forEach(btn => {
+    btn.addEventListener('click', () => irParaColaboradorEm('dossie', btn.dataset.gotoDossieInativo));
+  });
+  tbody.querySelectorAll('[data-edit-id-inativo]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelector('.tab-btn[data-tab="colaboradores"]').click();
+      iniciarEdicaoColaborador(btn.dataset.editIdInativo);
+    });
+  });
+  tbody.querySelectorAll('[data-reativar-id]').forEach(btn => {
+    btn.addEventListener('click', () => reativarColaborador(btn.dataset.reativarId));
+  });
+  tbody.querySelectorAll('[data-del-id-inativo]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.delIdInativo;
+      const nome = colaboradoresMap.get(id)?.nome ?? '';
+      if (!confirm(`Excluir ${nome}?`)) return;
+      await deleteDoc(doc(db, 'colaboradores', id));
+    });
+  });
 }
 
 // Quando exatamente um colaborador estiver marcado na tabela, oculta os
@@ -1443,6 +1538,7 @@ function preencherFormularioColaborador(id) {
   document.getElementById('input-area-atuacao').value = c.areaAtuacao || '';
   document.getElementById('input-setor').value = c.setor || '';
   document.getElementById('input-admissao-colab').value = c.dataAdmissao || '';
+  document.getElementById('input-demissao-colab').value = c.dataDemissao || '';
   document.getElementById('input-salario').value = c.salarioBase;
   document.getElementById('input-plano').value = c.valorPlanoSaude || '';
   definirBadgeForm('toggle-form-va', c.recebeVA !== false);
@@ -1457,6 +1553,7 @@ function limparFormularioColaborador() {
   document.getElementById('input-area-atuacao').value = '';
   document.getElementById('input-setor').value = '';
   document.getElementById('input-admissao-colab').value = '';
+  document.getElementById('input-demissao-colab').value = '';
   document.getElementById('input-salario').value = '';
   document.getElementById('input-plano').value = '';
   definirBadgeForm('toggle-form-va', true);
@@ -1500,6 +1597,7 @@ async function criarColaborador() {
   const areaAtuacao = document.getElementById('input-area-atuacao').value || null;
   const setor = document.getElementById('input-setor').value || null;
   const dataAdmissao = document.getElementById('input-admissao-colab').value || null;
+  const dataDemissao = document.getElementById('input-demissao-colab').value || null;
   const salarioBase = Number(document.getElementById('input-salario').value || 0);
   const valorPlanoSaude = Number(document.getElementById('input-plano').value || 0);
   const recebeVA = document.getElementById('toggle-form-va').dataset.value === 'true';
@@ -1510,7 +1608,13 @@ async function criarColaborador() {
   if (!nome || !salarioBase) { alert('Nome e salário base são obrigatórios.'); return; }
 
   if (editandoColaboradorId) {
-    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), { nome, areaAtuacao, setor, dataAdmissao, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId, asoData, dataNascimento });
+    const payload = { nome, areaAtuacao, setor, dataAdmissao, dataDemissao, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId, asoData, dataNascimento };
+    // Preencher a demissão sempre move pra Inativos -- não força o inverso
+    // (limpar a demissão não reativa sozinho, pra não reativar por acidente
+    // alguém que foi desativado manualmente sem data; reativar é uma ação
+    // explícita própria, ver reativarColaborador()).
+    if (dataDemissao) payload.ativo = false;
+    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), payload);
     cancelarEdicaoColaborador();
     return;
   }
@@ -1521,8 +1625,15 @@ async function criarColaborador() {
   if (!asoData && dataAdmissao) asoData = dataAdmissao;
 
   const id = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  await setDoc(doc(db, 'colaboradores', id), { nome, areaAtuacao, setor, dataAdmissao, salarioBase, valorPlanoSaude, ativo: true, recebeVA, recebeVT, rotaId, asoData, dataNascimento });
+  await setDoc(doc(db, 'colaboradores', id), { nome, areaAtuacao, setor, dataAdmissao, dataDemissao, salarioBase, valorPlanoSaude, ativo: !dataDemissao, recebeVA, recebeVT, rotaId, asoData, dataNascimento });
   cancelarEdicaoColaborador();
+}
+
+// Reativação explícita: limpa a demissão e volta pra Ativo numa ação só,
+// pra não deixar o registro num estado inconsistente (ativo=true com
+// dataDemissao ainda preenchida).
+async function reativarColaborador(id) {
+  await updateDoc(doc(db, 'colaboradores', id), { ativo: true, dataDemissao: null });
 }
 
 // ── Parâmetros ──────────────────────────────────────────────────
