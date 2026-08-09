@@ -45,23 +45,38 @@ header .user-area button:hover{background:rgba(255,255,255,.22)}
 
 .tab-btn-group{position:relative}
 .tab-btn-group .tab-caret{font-size:10px;margin-left:2px;opacity:.7}
-.tab-dropdown{
-  display:none;position:absolute;top:100%;left:0;background:#fff;border:1px solid var(--g200);
-  border-radius:0 0 10px 10px;box-shadow:0 14px 28px rgba(11,35,85,.2);z-index:50;padding:12px 0;
-  min-width:600px;
+
+/* Menu "Relatórios" — cascata vertical (1º nível: categorias; 2º nível: flyout à esquerda) */
+.rel-menu{
+  display:none;position:absolute;top:100%;right:0;margin-top:2px;background:#fff;
+  border:1px solid var(--g200);border-radius:10px;box-shadow:0 14px 28px rgba(11,35,85,.2);
+  z-index:50;padding:6px;min-width:225px;
 }
-.tab-btn-group:hover .tab-dropdown,.tab-btn-group.open .tab-dropdown{display:flex}
-.tab-dropdown-col{flex:1;padding:0 8px;border-right:1px solid var(--g100)}
-.tab-dropdown-col:last-child{border-right:none}
-.tab-dropdown-title{
-  font-size:11px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.03em;
-  padding:6px 14px 6px;
-}
-.tab-dropdown button{
-  display:block;width:100%;text-align:left;padding:8px 14px;font-size:13px;color:var(--g800);
+.tab-btn-group.open .rel-menu{display:block}
+
+.rel-menu-cat{position:relative}
+.rel-menu-item{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+  text-align:left;padding:10px 12px;font-size:13.5px;font-weight:600;color:var(--g800);
   background:none;border:none;cursor:pointer;font-family:var(--font);border-radius:6px;
 }
-.tab-dropdown button:hover{background:var(--g50);color:var(--blue)}
+.rel-menu-item:hover,.rel-menu-item:focus-visible,.rel-menu-cat.active>.rel-menu-item{
+  background:var(--g50);color:var(--blue);outline:none;
+}
+.rel-menu-chevron{font-size:14px;opacity:.5;line-height:1}
+
+.rel-submenu{
+  display:none;position:absolute;top:0;right:100%;margin-right:2px;background:#fff;
+  border:1px solid var(--g200);border-radius:10px;box-shadow:0 14px 28px rgba(11,35,85,.2);
+  z-index:51;padding:6px;min-width:205px;
+}
+.rel-menu-cat.active>.rel-submenu{display:block}
+.rel-submenu button{
+  display:block;width:100%;text-align:left;padding:9px 12px;font-size:13px;color:var(--g800);
+  background:none;border:none;cursor:pointer;font-family:var(--font);border-radius:6px;
+  white-space:nowrap;
+}
+.rel-submenu button:hover,.rel-submenu button:focus-visible{background:var(--g50);color:var(--blue);outline:none}
 
 h1{font-size:19px;color:var(--navy);margin-bottom:2px}
 .subtitle{font-size:13px;color:var(--g500);margin-bottom:20px}
@@ -183,29 +198,41 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
     <button class="tab-btn" data-tab="decimo">13º Salário</button>
     <button class="tab-btn" data-tab="dossie">Dossiê</button>
     <div class="tab-btn-group" id="tab-relatorios-group">
-      <button class="tab-btn" data-tab="relatorios" id="tab-btn-relatorios">Relatórios <span class="tab-caret">&#9662;</span></button>
-      <div class="tab-dropdown" id="tab-relatorios-dropdown">
-        <div class="tab-dropdown-col">
-          <div class="tab-dropdown-title">Férias</div>
-          <button data-rel-nav="ferias:colaborador">Colaborador</button>
-          <button data-rel-nav="ferias:setor">Setor</button>
-          <button data-rel-nav="ferias:periodo">Período</button>
-          <button data-rel-nav="ferias:geral">Geral (ano vigente)</button>
-          <button data-rel-nav="ferias:vencidas">Vencidas</button>
-          <button data-rel-nav="ferias:a-vencer">A vencer</button>
+      <button class="tab-btn" data-tab="relatorios" id="tab-btn-relatorios" aria-haspopup="true" aria-expanded="false">Relatórios <span class="tab-caret">&#9662;</span></button>
+      <div class="rel-menu" id="tab-relatorios-dropdown" role="menu" aria-label="Relatórios">
+        <div class="rel-menu-cat" data-rel-cat="ferias">
+          <button type="button" class="rel-menu-item" role="menuitem" aria-haspopup="true" aria-expanded="false">
+            <span>Férias</span><span class="rel-menu-chevron">&#8249;</span>
+          </button>
+          <div class="rel-submenu" role="menu" aria-label="Relatórios de Férias">
+            <button type="button" role="menuitem" data-rel-nav="ferias:colaborador">Colaborador</button>
+            <button type="button" role="menuitem" data-rel-nav="ferias:setor">Setor</button>
+            <button type="button" role="menuitem" data-rel-nav="ferias:periodo">Período</button>
+            <button type="button" role="menuitem" data-rel-nav="ferias:geral">Geral (ano vigente)</button>
+            <button type="button" role="menuitem" data-rel-nav="ferias:vencidas">Vencidas</button>
+            <button type="button" role="menuitem" data-rel-nav="ferias:a-vencer">A vencer</button>
+          </div>
         </div>
-        <div class="tab-dropdown-col">
-          <div class="tab-dropdown-title">13&ordm; Salário</div>
-          <button data-rel-nav="decimo:colaborador">Colaborador</button>
-          <button data-rel-nav="decimo:geral">1&ordf; Parcela Todos</button>
-          <button data-rel-nav="decimo:geral">2&ordf; Parcela Todos</button>
-          <button data-rel-nav="decimo:geral">Geral</button>
+        <div class="rel-menu-cat" data-rel-cat="decimo">
+          <button type="button" class="rel-menu-item" role="menuitem" aria-haspopup="true" aria-expanded="false">
+            <span>13&ordm; Salário</span><span class="rel-menu-chevron">&#8249;</span>
+          </button>
+          <div class="rel-submenu" role="menu" aria-label="Relatórios de 13º Salário">
+            <button type="button" role="menuitem" data-rel-nav="decimo:colaborador">Colaborador</button>
+            <button type="button" role="menuitem" data-rel-nav="decimo:geral">1&ordf; Parcela Todos</button>
+            <button type="button" role="menuitem" data-rel-nav="decimo:geral">2&ordf; Parcela Todos</button>
+            <button type="button" role="menuitem" data-rel-nav="decimo:geral">Geral</button>
+          </div>
         </div>
-        <div class="tab-dropdown-col">
-          <div class="tab-dropdown-title">Dossiê</div>
-          <button data-rel-nav="dossie:colaborador">Colaborador</button>
-          <button data-rel-nav="dossie:periodo">Período</button>
-          <button data-rel-nav="dossie:tipo">Tipo</button>
+        <div class="rel-menu-cat" data-rel-cat="dossie">
+          <button type="button" class="rel-menu-item" role="menuitem" aria-haspopup="true" aria-expanded="false">
+            <span>Dossiê</span><span class="rel-menu-chevron">&#8249;</span>
+          </button>
+          <div class="rel-submenu" role="menu" aria-label="Relatórios de Dossiê">
+            <button type="button" role="menuitem" data-rel-nav="dossie:colaborador">Colaborador</button>
+            <button type="button" role="menuitem" data-rel-nav="dossie:periodo">Período</button>
+            <button type="button" role="menuitem" data-rel-nav="dossie:tipo">Tipo</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1121,13 +1148,7 @@ function iniciarApp() {
     btn.addEventListener('click', () => navegarParaRelatorio(btn.dataset.relNav));
   });
   mostrarSecaoRelatorio(familiaRelatorioAtual);
-  document.getElementById('tab-btn-relatorios').addEventListener('click', () => {
-    document.getElementById('tab-relatorios-group').classList.remove('open');
-  });
-  document.addEventListener('click', (e) => {
-    const group = document.getElementById('tab-relatorios-group');
-    if (!group.contains(e.target)) group.classList.remove('open');
-  });
+  configurarMenuRelatorios();
 
   // ── Botões "Gerar PDF" ───────────────────────────────────────────
   document.getElementById('btn-rel-ferias-pdf').addEventListener('click', () => {
@@ -3254,7 +3275,7 @@ function mostrarSecaoRelatorio(familia) {
 function navegarParaRelatorio(relNav) {
   const [familia, filtro] = relNav.split(':');
   document.getElementById('tab-btn-relatorios').click();
-  document.getElementById('tab-relatorios-group').classList.remove('open');
+  fecharMenuRelatorios();
   mostrarSecaoRelatorio(familia);
   if (familia === 'ferias') {
     selecionarFiltroFerias(filtro);
@@ -3267,6 +3288,89 @@ function navegarParaRelatorio(relNav) {
     const focoId = { colaborador: 'rel-dossie-colaborador', periodo: 'rel-dossie-de', tipo: 'rel-dossie-tipo' }[filtro];
     if (focoId) document.getElementById(focoId).focus();
   }
+}
+
+// ── Menu "Relatórios" — cascata vertical (1º nível: categorias; 2º nível:
+// flyout à esquerda, já que o botão fica perto da borda direita da tela) ──
+// Abertura é instantânea (hover/clique/foco); fechamento tem uma pequena
+// tolerância (~180ms) só pra não piscar enquanto o cursor se desloca entre
+// o botão, a categoria e o submenu.
+let relMenuFecharTimer = null;
+
+function abrirMenuRelatorios() {
+  clearTimeout(relMenuFecharTimer);
+  document.getElementById('tab-relatorios-group').classList.add('open');
+  document.getElementById('tab-btn-relatorios').setAttribute('aria-expanded', 'true');
+  ajustarMenuNaViewport(document.getElementById('tab-relatorios-dropdown'));
+}
+
+function fecharMenuRelatorios() {
+  clearTimeout(relMenuFecharTimer);
+  document.getElementById('tab-relatorios-group').classList.remove('open');
+  document.getElementById('tab-btn-relatorios').setAttribute('aria-expanded', 'false');
+  document.querySelectorAll('#tab-relatorios-dropdown .rel-menu-cat').forEach(cat => {
+    cat.classList.remove('active');
+    cat.querySelector('.rel-menu-item').setAttribute('aria-expanded', 'false');
+  });
+}
+
+function agendarFechamentoMenuRelatorios() {
+  clearTimeout(relMenuFecharTimer);
+  relMenuFecharTimer = setTimeout(fecharMenuRelatorios, 180);
+}
+
+function ativarCategoriaRelatorio(catEl) {
+  document.querySelectorAll('#tab-relatorios-dropdown .rel-menu-cat').forEach(cat => {
+    const ativa = cat === catEl;
+    cat.classList.toggle('active', ativa);
+    cat.querySelector('.rel-menu-item').setAttribute('aria-expanded', String(ativa));
+  });
+  ajustarMenuNaViewport(catEl.querySelector('.rel-submenu'));
+}
+
+// Garante left>=0 e right<=largura da viewport (nunca cria rolagem
+// horizontal), mesmo em telas estreitas -- não depende só do
+// posicionamento estático via CSS (right:0 / right:100%).
+function ajustarMenuNaViewport(painel) {
+  painel.style.transform = '';
+  const rect = painel.getBoundingClientRect();
+  const margem = 8;
+  let deslocamento = 0;
+  if (rect.left < margem) deslocamento = margem - rect.left;
+  else if (rect.right > window.innerWidth - margem) deslocamento = (window.innerWidth - margem) - rect.right;
+  if (deslocamento) painel.style.transform = `translateX(${deslocamento}px)`;
+}
+
+function configurarMenuRelatorios() {
+  const group = document.getElementById('tab-relatorios-group');
+  const botao = document.getElementById('tab-btn-relatorios');
+  const categorias = Array.from(document.querySelectorAll('#tab-relatorios-dropdown .rel-menu-cat'));
+
+  group.addEventListener('mouseenter', abrirMenuRelatorios);
+  group.addEventListener('mouseleave', agendarFechamentoMenuRelatorios);
+
+  botao.addEventListener('click', () => {
+    if (group.classList.contains('open')) fecharMenuRelatorios();
+    else abrirMenuRelatorios();
+  });
+
+  categorias.forEach(cat => {
+    const item = cat.querySelector('.rel-menu-item');
+    item.addEventListener('mouseenter', () => ativarCategoriaRelatorio(cat));
+    item.addEventListener('focus', () => ativarCategoriaRelatorio(cat));
+    item.addEventListener('click', () => ativarCategoriaRelatorio(cat));
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!group.contains(e.target)) fecharMenuRelatorios();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && group.classList.contains('open')) {
+      fecharMenuRelatorios();
+      botao.focus();
+    }
+  });
 }
 
 // ── Exportação em PDF (window.print() + @media print, sem dependência nova) ──
