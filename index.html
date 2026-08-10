@@ -166,6 +166,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
   #print-conteudo thead th{position:static;background:#eee}
   #print-conteudo .table-scroll{max-height:none;overflow:visible}
   #print-conteudo .badge{border:1px solid currentColor;background:none}
+  #print-conteudo .no-imprimir{display:none}
   @page{margin:14mm}
 }
 </style>
@@ -720,7 +721,10 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
 
   <!-- ═══ DOSSIÊ ═══ -->
   <div class="tab-pane" id="tab-dossie">
-    <h1>Dossiê</h1>
+    <div class="form-row" style="align-items:center;justify-content:space-between">
+      <h1>Dossiê</h1>
+      <button class="btn btn-dark" id="btn-dossie-pdf">Gerar PDF</button>
+    </div>
     <div class="subtitle">Histórico do colaborador: trajetória, mudanças de cargo/salário, atrasos, faltas, atestados e ocorrências.</div>
     <button class="btn btn-dark" id="btn-voltar-colaboradores-dossie" style="display:none;margin-bottom:16px">&larr; Voltar para Colaboradores</button>
 
@@ -794,9 +798,9 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       <button class="btn btn-dark" id="btn-cancelar-dossie" style="display:none">Cancelar</button>
     </div>
 
-    <div class="card" style="padding:0;overflow-x:auto">
+    <div class="card" style="padding:0;overflow-x:auto" id="dossie-container">
       <table>
-        <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Anexo</th><th></th></tr></thead>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Anexo</th><th class="no-imprimir"></th></tr></thead>
         <tbody id="dossie-tbody"><tr><td colspan="5" class="empty-msg">Selecione um colaborador acima.</td></tr></tbody>
       </table>
     </div>
@@ -1159,6 +1163,11 @@ function iniciarApp() {
   });
   document.getElementById('btn-rel-dossie-pdf').addEventListener('click', () => {
     gerarPDF(tituloFiltroAtualDossie(), 'rel-dossie-container');
+  });
+  document.getElementById('btn-dossie-pdf').addEventListener('click', () => {
+    const c = colaboradoresMap.get(document.getElementById('select-dossie-colaborador').value);
+    if (!c) { alert('Selecione um colaborador para gerar o PDF.'); return; }
+    gerarPDF(`Dossiê — ${c.nome}`, 'dossie-container');
   });
 
   document.getElementById('input-filtro-colab').addEventListener('input', (e) => {
@@ -2751,7 +2760,7 @@ function renderDossieTable() {
       <td>${e.tipo}</td>
       <td>${e.descricao || ''}${e.proximo ? ` <span class="badge a-vencer" title="Próximo contato agendado">Próximo: ${formatarDataBR(e.proximo)}</span>` : ''}</td>
       <td>${e.anexoUrl ? `<a href="${e.anexoUrl}" target="_blank" rel="noopener">Ver arquivo</a>` : '—'}</td>
-      <td style="text-align:right;white-space:nowrap">
+      <td class="no-imprimir" style="text-align:right;white-space:nowrap">
         <button class="btn-link" style="color:var(--blue)" data-edit-dossie="${e.id}">Editar</button>
         <button class="btn-link" data-del-dossie="${e.id}">Excluir</button>
       </td>
