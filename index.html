@@ -941,7 +941,7 @@ import {
   onSnapshot, query, where, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
-  getStorage, ref, uploadBytes, getDownloadURL
+  getStorage, ref, uploadBytes, getBytes
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 const firebaseConfig = {
@@ -1054,6 +1054,13 @@ let unsubLancamentos = null;
 // (pedido do Wellington: precisa subir a declaração em PDF que o
 // colaborador entrega, mesmo fluxo, só um nome diferente no Tipo).
 const TIPOS_DOSSIE_COM_ANEXO = ['Atestado', 'Declaração de Consulta', 'Feedback'];
+
+// Mesmo conjunto já aceito pelo `accept` do input de anexo -- espelhado aqui
+// pra validar de verdade no JS (o `accept` do input é só uma sugestão pro
+// seletor de arquivos do SO, não impede escolher outro tipo). O Storage
+// Rules do Firebase aplica o mesmo limite/tipos do lado do servidor.
+const TIPOS_ANEXO_PERMITIDOS = ['application/pdf', 'image/jpeg', 'image/png'];
+const TAMANHO_MAX_ANEXO = 10 * 1024 * 1024; // 10 MB
 
 function iniciarApp() {
   escutarColaboradores();
@@ -2760,7 +2767,11 @@ function renderDossieTable() {
       <td>${e.data ? formatarDataBR(e.data) : '—'}</td>
       <td>${e.tipo}</td>
       <td>${e.descricao || ''}${e.proximo ? ` <span class="badge a-vencer" title="Próximo contato agendado">Próximo: ${formatarDataBR(e.proximo)}</span>` : ''}</td>
-      <td>${e.anexoUrl ? `<a href="${e.anexoUrl}" target="_blank" rel="noopener">Ver arquivo</a>` : '—'}</td>
+      <td>${
+        e.anexoPath ? `<button type="button" class="btn-link" style="color:var(--blue)" data-ver-anexo="${e.id}">Ver arquivo</button>`
+        : e.anexoUrl ? `<a href="${e.anexoUrl}" target="_blank" rel="noopener">Ver arquivo</a>`
+        : '—'
+      }</td>
       <td class="no-imprimir" style="text-align:right;white-space:nowrap">
         <button class="btn-link" style="color:var(--blue)" data-edit-dossie="${e.id}">Editar</button>
         <button class="btn-link" data-del-dossie="${e.id}">Excluir</button>
@@ -2777,6 +2788,40 @@ function renderDossieTable() {
       if (editandoDossieId === btn.dataset.delDossie) cancelarEdicaoDossie();
     });
   });
+  tbody.querySelectorAll('[data-ver-anexo]').forEach(btn => {
+    btn.addEventListener('click', () => abrirAnexoDossie(btn.dataset.verAnexo));
+  });
+}
+
+// Extensão do nome do arquivo (o próprio caminho já guarda o nome original,
+// ver criarRegistroDossie) -> contentType, pra montar o Blob certo ao
+// reabrir. Evita uma chamada extra a getMetadata() só pra isso -- os únicos
+// tipos aceitos no upload (TIPOS_ANEXO_PERMITIDOS) são justamente esses 3.
+function inferirContentTypePorNome(nome) {
+  const ext = nome.split('.').pop().toLowerCase();
+  if (ext === 'pdf') return 'application/pdf';
+  if (ext === 'png') return 'image/png';
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+  return 'application/octet-stream';
+}
+
+// Anexos novos (anexoPath) não têm mais link público/permanente -- o
+// conteúdo é buscado autenticado na hora do clique (getBytes respeita a
+// Storage Rule normalmente, diferente de getDownloadURL) e aberto a partir
+// de um Blob local, que só existe nesta aba.
+async function abrirAnexoDossie(id) {
+  const e = dossieEventos.get(id);
+  if (!e || !e.anexoPath) return;
+  try {
+    const bytes = await getBytes(ref(storage, e.anexoPath));
+    const contentType = inferirContentTypePorNome(e.anexoPath);
+    const blobUrl = URL.createObjectURL(new Blob([bytes], { type: contentType }));
+    window.open(blobUrl, '_blank');
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+  } catch (err) {
+    console.error('Erro ao abrir anexo do dossiê:', err);
+    alert('Não foi possível abrir o anexo. Tente novamente.');
+  }
 }
 
 let editandoDossieId = null;
@@ -2851,6 +2896,10 @@ async function criarRegistroDossie() {
   if (!data) { alert('Data é obrigatória.'); return; }
   if (ehMudanca && (!de || !para)) { alert('Informe o valor/cargo anterior e o novo.'); return; }
   if (!ehMudanca && !descricaoDigitada) { alert('Descrição é obrigatória.'); return; }
+  if (TIPOS_DOSSIE_COM_ANEXO.includes(tipo) && arquivo) {
+    if (!TIPOS_ANEXO_PERMITIDOS.includes(arquivo.type)) { alert('Tipo de arquivo não permitido. Envie um PDF ou uma imagem (JPEG/PNG).'); return; }
+    if (arquivo.size > TAMANHO_MAX_ANEXO) { alert('O arquivo excede o tamanho máximo permitido de 10 MB.'); return; }
+  }
 
   const btn = document.getElementById('btn-add-dossie');
   const textoOriginalBtn = editandoDossieId ? 'Salvar alterações' : 'Adicionar registro';
@@ -2860,15 +2909,23 @@ async function criarRegistroDossie() {
   try {
     // Ao editar, sem escolher um novo arquivo, mantém o anexo que já existia
     // (não dá pra pré-carregar um <input type="file"> por segurança do navegador).
+    // anexoPath (novo formato) guarda só o caminho no Storage -- "Ver
+    // arquivo" busca o conteúdo autenticado na hora via getBytes(), sem
+    // gerar um link com token que funcione fora do app (ver auditoria de
+    // privacidade). anexoUrl continua existindo só pra não quebrar
+    // registros antigos já salvos com getDownloadURL() antes desta
+    // correção -- nunca mais é gravado num upload novo.
     let anexoUrl = editandoDossieId ? (dossieEventos.get(editandoDossieId)?.anexoUrl ?? null) : null;
+    let anexoPath = editandoDossieId ? (dossieEventos.get(editandoDossieId)?.anexoPath ?? null) : null;
     if (TIPOS_DOSSIE_COM_ANEXO.includes(tipo) && arquivo) {
       const caminho = `dossie/${colaboradorId}/${Date.now()}_${arquivo.name}`;
       const storageRef = ref(storage, caminho);
       await uploadBytes(storageRef, arquivo);
-      anexoUrl = await getDownloadURL(storageRef);
+      anexoPath = caminho;
+      anexoUrl = null;
     }
 
-    const payload = { colaboradorId, data, tipo, descricao, descricaoDigitada, de, para, anexoUrl, valor, diasAfastado, proximo };
+    const payload = { colaboradorId, data, tipo, descricao, descricaoDigitada, de, para, anexoUrl, anexoPath, valor, diasAfastado, proximo };
     if (editandoDossieId) {
       await updateDoc(doc(db, 'dossie', editandoDossieId), payload);
     } else {
@@ -2877,7 +2934,23 @@ async function criarRegistroDossie() {
 
     cancelarEdicaoDossie();
   } catch (err) {
-    alert('Erro ao salvar (se for anexo, o Storage do Firebase pode ainda não estar ativado): ' + err.message);
+    // Mensagens específicas pros erros conhecidos do Storage -- a mensagem
+    // genérica anterior ("Storage pode não estar ativado") não ajudava a
+    // diferenciar permissão negada de outros problemas. Em qualquer erro, o
+    // formulário permanece preenchido (não chama cancelarEdicaoDossie) pra
+    // não obrigar redigitar tudo antes de tentar de novo.
+    let mensagem;
+    if (err.code === 'storage/unauthorized') {
+      mensagem = 'Não foi possível anexar o arquivo porque o usuário não possui permissão no Firebase Storage. Entre em contato com o administrador.';
+    } else if (err.code === 'storage/unauthenticated') {
+      mensagem = 'Sua sessão expirou. Entre novamente no sistema e tente anexar o arquivo.';
+    } else if (err.code === 'storage/quota-exceeded') {
+      mensagem = 'O armazenamento do sistema está temporariamente indisponível por limite de uso. Entre em contato com o administrador.';
+    } else {
+      mensagem = 'Erro ao salvar o registro. Tente novamente ou contate o administrador.';
+      console.error('Erro ao salvar registro de dossiê:', err);
+    }
+    alert(mensagem);
     btn.textContent = textoOriginalBtn;
   } finally {
     btn.disabled = false;

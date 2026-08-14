@@ -1,0 +1,42 @@
+rules_version = '2';
+
+// Setor Pessoal — Agil Aduaneira (sistema-va-vt-agil)
+//
+// Único uso hoje: anexos do Dossiê (Atestado / Declaração de Consulta /
+// Feedback), gravados pelo app em `dossie/{colaboradorId}/{timestamp}_{nome}`
+// (ver criarRegistroDossie() em index.html). Não havia nenhuma Storage Rule
+// publicada pra este projeto (firebase.json não declarava "storage" e não
+// existia storage.rules no repositório) -- o bucket ficou na regra padrão
+// do Firebase Console (bloqueia tudo), causando storage/unauthorized em
+// qualquer upload real, mesmo autenticado.
+//
+// Mesmo princípio já usado nas regras do Firestore deste projeto: qualquer
+// usuário autenticado (login do Setor Pessoal) pode ler/gravar -- não há
+// papéis/permissões diferenciadas hoje. Tipos e tamanho ficam restritos ao
+// que o formulário do Dossiê já aceita (accept=".pdf,.jpg,.jpeg,.png" no
+// input), num limite de 10 MB por arquivo.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    match /dossie/{colaboradorId}/{fileName} {
+      allow read: if request.auth != null;
+
+      allow create, update: if request.auth != null
+                            && request.resource.size <= 10 * 1024 * 1024
+                            && (
+                              request.resource.contentType == 'application/pdf'
+                              || request.resource.contentType == 'image/jpeg'
+                              || request.resource.contentType == 'image/png'
+                            );
+
+      // Nada no app chama deleteObject() hoje -- não abrir esse caminho.
+      allow delete: if false;
+    }
+
+    // Qualquer outro caminho fica bloqueado por padrão (não existe hoje
+    // nenhum outro uso do Storage neste projeto).
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
