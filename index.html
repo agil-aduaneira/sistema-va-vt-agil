@@ -1162,6 +1162,7 @@ function iniciarApp() {
     gerarPDF(tituloFiltroAtualDecimo(), 'rel-decimo-container');
   });
   document.getElementById('btn-rel-dossie-pdf').addEventListener('click', () => {
+    if (!dossieRelatorioTemCriterio()) { alert('Selecione um filtro (colaborador, tipo ou período) antes de gerar o PDF.'); return; }
     gerarPDF(tituloFiltroAtualDossie(), 'rel-dossie-container');
   });
   document.getElementById('btn-dossie-pdf').addEventListener('click', () => {
@@ -3233,9 +3234,26 @@ function renderRelatorioDecimo() {
   container.innerHTML = renderTabelaGeralDecimo(linhasBase);
 }
 
+// Exige pelo menos 1 critério real (colaborador, tipo, ou período completo)
+// antes de filtrar -- sem isso, os 4 campos vazios não excluíam nenhum
+// registro (`!filtro || ...`) e a tabela despejava tudo assim que a seção
+// ficava visível. Reaproveitado pelo botão "Gerar PDF" pra bloquear
+// exportação nesse mesmo estado neutro.
+function dossieRelatorioTemCriterio() {
+  const filtroColaborador = document.getElementById('rel-dossie-colaborador').value;
+  const filtroTipo = document.getElementById('rel-dossie-tipo').value;
+  const filtroDe = document.getElementById('rel-dossie-de').value;
+  const filtroAte = document.getElementById('rel-dossie-ate').value;
+  return !!filtroColaborador || !!filtroTipo || (!!filtroDe && !!filtroAte);
+}
+
 function renderRelatorioDossie() {
   const tbody = document.getElementById('rel-dossie-tbody');
   if (!tbody) return;
+  if (!dossieRelatorioTemCriterio()) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">Selecione os filtros acima para visualizar o relatório.</td></tr>';
+    return;
+  }
   const filtroColaborador = document.getElementById('rel-dossie-colaborador').value;
   const filtroTipo = document.getElementById('rel-dossie-tipo').value;
   const filtroDe = document.getElementById('rel-dossie-de').value;
@@ -3293,6 +3311,15 @@ function navegarParaRelatorio(relNav) {
     selecionarFiltroDecimo(filtro);
     document.getElementById('rel-decimo-titulo').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } else if (familia === 'dossie') {
+    // Os 3 destinos (colaborador/período/tipo) compartilham o mesmo painel de
+    // filtros -- pra cada entrada via menu abrir em estado neutro (sem
+    // reaproveitar critério de uma consulta anterior), zera os 4 campos e
+    // renderiza de novo antes de focar o campo relevante.
+    document.getElementById('rel-dossie-colaborador').value = '';
+    document.getElementById('rel-dossie-tipo').value = '';
+    document.getElementById('rel-dossie-de').value = '';
+    document.getElementById('rel-dossie-ate').value = '';
+    renderRelatorioDossie();
     document.getElementById('rel-dossie-titulo').scrollIntoView({ behavior: 'smooth', block: 'start' });
     const focoId = { colaborador: 'rel-dossie-colaborador', periodo: 'rel-dossie-de', tipo: 'rel-dossie-tipo' }[filtro];
     if (focoId) document.getElementById(focoId).focus();
