@@ -371,9 +371,41 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
         <label>Data de admissão</label>
         <input type="date" id="input-admissao-colab">
       </div>
-      <div class="field">
+      <div class="field" style="min-width:140px">
+        <label>Situação</label>
+        <select id="input-situacao-colab">
+          <option value="ATIVO">Ativo</option>
+          <option value="AFASTADO">Afastado</option>
+          <option value="DESLIGADO">Desligado</option>
+        </select>
+      </div>
+      <div class="field" id="campo-demissao-colab">
         <label>Data de demissão</label>
         <input type="date" id="input-demissao-colab" title="Preencher move o colaborador para a aba 'Colaboradores Inativos', mantendo todo o histórico.">
+      </div>
+      <div class="field" id="campo-afastamento-data" style="display:none">
+        <label>Data do afastamento</label>
+        <input type="date" id="input-afastamento-data">
+      </div>
+      <div class="field" id="campo-afastamento-previsao" style="display:none">
+        <label>Previsão de retorno</label>
+        <input type="date" id="input-afastamento-previsao">
+      </div>
+      <div class="field" id="campo-afastamento-tipo" style="min-width:190px;display:none">
+        <label>Tipo/Motivo do afastamento</label>
+        <select id="input-afastamento-tipo">
+          <option value="">Selecione...</option>
+          <option value="INSS">INSS</option>
+          <option value="Atestado médico">Atestado médico</option>
+          <option value="Licença-maternidade">Licença-maternidade</option>
+          <option value="Licença-paternidade">Licença-paternidade</option>
+          <option value="Acidente de trabalho">Acidente de trabalho</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+      <div class="field" id="campo-afastamento-obs" style="flex:1;min-width:220px;display:none">
+        <label>Observação (opcional)</label>
+        <input type="text" id="input-afastamento-obs">
       </div>
       <div class="field">
         <label>Salário base</label>
@@ -455,7 +487,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
   <!-- ═══ COLABORADORES INATIVOS ═══ -->
   <div class="tab-pane" id="tab-colaboradores-inativos">
     <h1>Colaboradores Inativos</h1>
-    <div class="subtitle">Colaboradores desligados (com data de demissão preenchida) — histórico completo (Férias/13º/Dossiê) continua disponível.</div>
+    <div class="subtitle">Colaboradores temporariamente afastados ou desligados — o histórico completo permanece disponível.</div>
 
     <div class="card form-row">
       <div class="field" style="flex:1">
@@ -468,7 +500,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       <table>
         <thead>
           <tr>
-            <th>Nome</th><th>Cargo</th><th>Setor</th><th>Admissão</th><th>Demissão</th><th></th>
+            <th>Nome</th><th>Cargo</th><th>Setor</th><th>Situação</th><th>Admissão</th><th>Afastamento / Demissão</th><th>Previsão de retorno</th><th></th>
           </tr>
         </thead>
         <tbody id="colaboradores-inativos-tbody"></tbody>
@@ -749,6 +781,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
           <option value="Falta">Falta</option>
           <option value="Atestado">Atestado</option>
           <option value="Declaração de Consulta">Declaração de Consulta</option>
+          <option value="Declaração de Acompanhamento">Declaração de Acompanhamento</option>
           <option value="Ocorrência">Ocorrência</option>
           <option value="Feedback">Feedback</option>
           <option value="Multa / Erros">Multa / Erros</option>
@@ -888,6 +921,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
             <option value="Falta">Falta</option>
             <option value="Atestado">Atestado</option>
             <option value="Declaração de Consulta">Declaração de Consulta</option>
+            <option value="Declaração de Acompanhamento">Declaração de Acompanhamento</option>
             <option value="Ocorrência">Ocorrência</option>
             <option value="Feedback">Feedback</option>
             <option value="Multa / Erros">Multa / Erros</option>
@@ -1053,7 +1087,7 @@ let unsubLancamentos = null;
 // "Declaração de Consulta" reusa o mesmo campo de upload do "Atestado"
 // (pedido do Wellington: precisa subir a declaração em PDF que o
 // colaborador entrega, mesmo fluxo, só um nome diferente no Tipo).
-const TIPOS_DOSSIE_COM_ANEXO = ['Atestado', 'Declaração de Consulta', 'Feedback'];
+const TIPOS_DOSSIE_COM_ANEXO = ['Atestado', 'Declaração de Consulta', 'Declaração de Acompanhamento', 'Feedback'];
 
 // Mesmo conjunto já aceito pelo `accept` do input de anexo -- espelhado aqui
 // pra validar de verdade no JS (o `accept` do input é só uma sugestão pro
@@ -1100,6 +1134,7 @@ function iniciarApp() {
   document.getElementById('btn-exportar').addEventListener('click', exportarMesAtual);
   document.getElementById('btn-add-colab').addEventListener('click', criarColaborador);
   document.getElementById('btn-cancelar-edicao').addEventListener('click', cancelarEdicaoColaborador);
+  document.getElementById('input-situacao-colab').addEventListener('change', atualizarCamposSituacaoColaborador);
   document.getElementById('input-area-atuacao').addEventListener('change', (e) => {
     const setorInferido = inferirSetorPorCargo(e.target.value);
     if (setorInferido) document.getElementById('input-setor').value = setorInferido;
@@ -1300,6 +1335,31 @@ function escutarColaboradores() {
   });
 }
 
+// Fonte única de verdade pra "ATIVO"/"AFASTADO"/"DESLIGADO" -- antes disso,
+// "Colaboradores" e "Colaboradores Inativos" decidiam quem mostrar olhando
+// só pro campo bruto `ativo`, e um controle isolado (o badge clicável
+// "Ativo/Inativo" da tabela, ver data-toggle-id) gravava esse campo direto
+// via updateDoc sem nunca checar/limpar `dataDemissao` -- se ele fosse
+// clicado numa aba desatualizada (ou entre o edit salvar a demissão e a
+// tela re-renderizar), um colaborador já desligado voltava a `ativo:true`
+// SEM perder a `dataDemissao`, causando exatamente o caso do Geovane
+// (aparecia como Ativo em Colaboradores e, ao mesmo tempo, permanecia
+// listado em Colaboradores Inativos com a demissão certa). `dataDemissao`
+// agora sempre vence: nenhuma inconsistência de `ativo`/`statusColaborador`
+// consegue mais fazer alguém com demissão preenchida aparecer como Ativo,
+// mesmo em documentos legados que nunca tiveram `statusColaborador`.
+function obterStatusColaborador(c) {
+  if (c.dataDemissao) return 'DESLIGADO';
+  if (c.statusColaborador === 'AFASTADO') return 'AFASTADO';
+  if (c.statusColaborador === 'DESLIGADO') return 'DESLIGADO';
+  // Legado: colaborador desativado manualmente (badge antigo) sem data nem
+  // status -- comportamento de antes já tirava ele de "Colaboradores" e
+  // mostrava em "Colaboradores Inativos", então tratamos como Desligado pra
+  // não regredir esse caso.
+  if (c.ativo === false) return 'DESLIGADO';
+  return 'ATIVO';
+}
+
 // Retorna o status do ASO: 'sem-data' (nunca cadastrado), 'vencido', 'a-vencer' (30 dias antes
 // do limite) ou 'em-dia'.
 function calcularStatusASO(c) {
@@ -1318,9 +1378,10 @@ function calcularStatusASO(c) {
 
 function renderColaboradoresTable() {
   const tbody = document.getElementById('colaboradores-tbody');
-  // Só ativos aqui -- quem tem dataDemissao preenchida (ou foi desativado
-  // manualmente) passa a integrar só a aba "Colaboradores Inativos".
-  const linhas = Array.from(colaboradoresMap.entries()).filter(([, c]) => c.ativo).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
+  // Só quem estiver operacionalmente ATIVO -- Afastado e Desligado só
+  // aparecem em "Colaboradores Inativos" (obterStatusColaborador() decide,
+  // não o campo bruto `ativo`, pra nunca depender só dele).
+  const linhas = Array.from(colaboradoresMap.entries()).filter(([, c]) => obterStatusColaborador(c) === 'ATIVO').sort((a, b) => a[1].nome.localeCompare(b[1].nome));
   if (linhas.length === 0) {
     tbody.innerHTML = '<tr><td colspan="12" class="empty-msg">Nenhum colaborador ativo cadastrado ainda.</td></tr>';
     return;
@@ -1330,9 +1391,15 @@ function renderColaboradoresTable() {
     const recebeVT = c.recebeVT !== false;
     const aso = calcularStatusASO(c);
     const emFerias = estaDeFeriasHoje(id);
+    // Esta tabela já só lista quem está ATIVO (ver filtro acima) -- por isso
+    // o status aqui não precisa mais de um toggle "Ativo/Inativo" solto:
+    // desativar alguém agora exige preencher Situação (Afastado/Desligado)
+    // com os campos obrigatórios de cada caso, não um clique isolado que
+    // não sabia nada sobre `dataDemissao`/afastamento (era exatamente esse
+    // toggle que causava o tipo de inconsistência do Geovane).
     const statusCell = emFerias
       ? `<span class="badge a-vencer" title="Em período de férias hoje">Férias</span>`
-      : `<button class="badge ${c.ativo ? 'ativo' : 'inativo'}" data-toggle-id="${id}" data-ativo="${c.ativo}">${c.ativo ? 'Ativo' : 'Inativo'}</button>`;
+      : `<span class="badge ativo">Ativo</span>`;
     return `
     <tr data-colab-row="${id}">
       <td><input type="checkbox" data-select-colab-id="${id}" ${selecionadosColab.has(id) ? 'checked' : ''}></td>
@@ -1377,13 +1444,6 @@ function renderColaboradoresTable() {
       aplicarFocoColaborador();
     });
   });
-  tbody.querySelectorAll('[data-toggle-id]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.dataset.toggleId;
-      const ativo = btn.dataset.ativo === 'true';
-      await updateDoc(doc(db, 'colaboradores', id), { ativo: !ativo });
-    });
-  });
   tbody.querySelectorAll('[data-toggle-va]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.toggleVa;
@@ -1420,30 +1480,48 @@ function renderColaboradoresInativosTable() {
   const tbody = document.getElementById('colaboradores-inativos-tbody');
   const termo = filtroNomeColabInativos.trim().toLowerCase();
   const linhas = Array.from(colaboradoresMap.entries())
-    .filter(([, c]) => !c.ativo)
+    .filter(([, c]) => obterStatusColaborador(c) !== 'ATIVO')
     .filter(([, c]) => !termo || c.nome.toLowerCase().includes(termo))
     .sort((a, b) => a[1].nome.localeCompare(b[1].nome));
   if (linhas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Nenhum colaborador inativo.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-msg">Nenhum colaborador afastado ou desligado.</td></tr>';
     return;
   }
-  tbody.innerHTML = linhas.map(([id, c]) => `
+  tbody.innerHTML = linhas.map(([id, c]) => {
+    const status = obterStatusColaborador(c);
+    const afastado = status === 'AFASTADO';
+    const situacaoBadge = afastado
+      ? `<span class="badge a-vencer">Afastado</span>`
+      : `<span class="badge inativo">Desligado</span>`;
+    // Afastado mostra a data do afastamento + previsão de retorno; Desligado
+    // mostra a demissão e nunca a previsão (não tem sentido pra quem já saiu).
+    const colunaData = afastado
+      ? (c.dataAfastamento ? formatarDataBR(c.dataAfastamento) : '—')
+      : (c.dataDemissao ? formatarDataBR(c.dataDemissao) : '—');
+    const colunaPrevisao = afastado ? (c.previsaoRetorno ? formatarDataBR(c.previsaoRetorno) : '—') : '—';
+    const acoes = afastado
+      ? `<button class="btn-link" style="color:var(--green)" data-retorno-id="${id}">Registrar retorno</button>`
+      : `<button class="btn-link" style="color:var(--green)" data-reativar-id="${id}">Reativar</button>
+         <button class="btn-link" data-del-id-inativo="${id}">Excluir</button>`;
+    return `
     <tr>
       <td>${c.nome}</td>
       <td>${c.areaAtuacao || '—'}</td>
       <td>${c.setor || '—'}</td>
+      <td>${situacaoBadge}</td>
       <td>${c.dataAdmissao ? formatarDataBR(c.dataAdmissao) : '—'}</td>
-      <td>${c.dataDemissao ? formatarDataBR(c.dataDemissao) : '—'}</td>
+      <td>${colunaData}</td>
+      <td>${colunaPrevisao}</td>
       <td style="text-align:right;white-space:nowrap">
         <button class="btn-link" style="color:var(--blue)" data-goto-ferias-inativo="${id}" title="Ver férias">Férias</button>
         <button class="btn-link" style="color:var(--blue)" data-goto-decimo-inativo="${id}" title="Ver 13º salário">13º</button>
         <button class="btn-link" style="color:var(--blue)" data-goto-dossie-inativo="${id}" title="Ver dossiê">Dossiê</button>
         <button class="btn-link" style="color:var(--blue)" data-edit-id-inativo="${id}">Editar</button>
-        <button class="btn-link" style="color:var(--green)" data-reativar-id="${id}">Reativar</button>
-        <button class="btn-link" data-del-id-inativo="${id}">Excluir</button>
+        ${acoes}
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   tbody.querySelectorAll('[data-goto-ferias-inativo]').forEach(btn => {
     btn.addEventListener('click', () => irParaColaboradorEm('ferias', btn.dataset.gotoFeriasInativo));
@@ -1462,6 +1540,9 @@ function renderColaboradoresInativosTable() {
   });
   tbody.querySelectorAll('[data-reativar-id]').forEach(btn => {
     btn.addEventListener('click', () => reativarColaborador(btn.dataset.reativarId));
+  });
+  tbody.querySelectorAll('[data-retorno-id]').forEach(btn => {
+    btn.addEventListener('click', () => registrarRetornoColaborador(btn.dataset.retornoId));
   });
   tbody.querySelectorAll('[data-del-id-inativo]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -1569,6 +1650,20 @@ function inferirSetorPorCargo(nomeCargo) {
   return null;
 }
 
+// Mostra só os campos que fazem sentido pra situação escolhida -- Desligado
+// pede Data de Demissão; Afastado pede os campos de afastamento; Ativo não
+// exige nenhum dos dois. Evita que um campo escondido com valor antigo
+// "vaze" no salvamento (ver criarColaborador()).
+function atualizarCamposSituacaoColaborador() {
+  const situacao = document.getElementById('input-situacao-colab').value;
+  document.getElementById('campo-demissao-colab').style.display = situacao === 'DESLIGADO' ? 'flex' : 'none';
+  const mostrarAfastamento = situacao === 'AFASTADO';
+  document.getElementById('campo-afastamento-data').style.display = mostrarAfastamento ? 'flex' : 'none';
+  document.getElementById('campo-afastamento-previsao').style.display = mostrarAfastamento ? 'flex' : 'none';
+  document.getElementById('campo-afastamento-tipo').style.display = mostrarAfastamento ? 'flex' : 'none';
+  document.getElementById('campo-afastamento-obs').style.display = mostrarAfastamento ? 'flex' : 'none';
+}
+
 function preencherFormularioColaborador(id) {
   const c = colaboradoresMap.get(id);
   if (!c) return;
@@ -1576,7 +1671,13 @@ function preencherFormularioColaborador(id) {
   document.getElementById('input-area-atuacao').value = c.areaAtuacao || '';
   document.getElementById('input-setor').value = c.setor || '';
   document.getElementById('input-admissao-colab').value = c.dataAdmissao || '';
+  document.getElementById('input-situacao-colab').value = obterStatusColaborador(c);
   document.getElementById('input-demissao-colab').value = c.dataDemissao || '';
+  document.getElementById('input-afastamento-data').value = c.dataAfastamento || '';
+  document.getElementById('input-afastamento-previsao').value = c.previsaoRetorno || '';
+  document.getElementById('input-afastamento-tipo').value = c.tipoAfastamento || '';
+  document.getElementById('input-afastamento-obs').value = c.observacaoAfastamento || '';
+  atualizarCamposSituacaoColaborador();
   document.getElementById('input-salario').value = c.salarioBase;
   document.getElementById('input-plano').value = c.valorPlanoSaude || '';
   definirBadgeForm('toggle-form-va', c.recebeVA !== false);
@@ -1591,7 +1692,13 @@ function limparFormularioColaborador() {
   document.getElementById('input-area-atuacao').value = '';
   document.getElementById('input-setor').value = '';
   document.getElementById('input-admissao-colab').value = '';
+  document.getElementById('input-situacao-colab').value = 'ATIVO';
   document.getElementById('input-demissao-colab').value = '';
+  document.getElementById('input-afastamento-data').value = '';
+  document.getElementById('input-afastamento-previsao').value = '';
+  document.getElementById('input-afastamento-tipo').value = '';
+  document.getElementById('input-afastamento-obs').value = '';
+  atualizarCamposSituacaoColaborador();
   document.getElementById('input-salario').value = '';
   document.getElementById('input-plano').value = '';
   definirBadgeForm('toggle-form-va', true);
@@ -1630,12 +1737,22 @@ function cancelarEdicaoColaborador() {
   }
 }
 
+// Grava um evento no Dossiê sem passar pela lógica do formulário de Dossiê
+// (que é acoplada aos campos da tela) -- usado só pelos eventos automáticos
+// de afastamento/retorno, que nascem do cadastro de Colaborador, não do
+// formulário de Dossiê.
+async function registrarEventoDossie(colaboradorId, tipo, descricao) {
+  await setDoc(doc(collection(db, 'dossie')), {
+    colaboradorId, data: new Date().toISOString().slice(0, 10), tipo, descricao, descricaoDigitada: descricao,
+    de: null, para: null, anexoUrl: null, anexoPath: null, valor: null, diasAfastado: null, proximo: null,
+  });
+}
+
 async function criarColaborador() {
   const nome = document.getElementById('input-nome').value.trim();
   const areaAtuacao = document.getElementById('input-area-atuacao').value || null;
   const setor = document.getElementById('input-setor').value || null;
   const dataAdmissao = document.getElementById('input-admissao-colab').value || null;
-  const dataDemissao = document.getElementById('input-demissao-colab').value || null;
   const salarioBase = Number(document.getElementById('input-salario').value || 0);
   const valorPlanoSaude = Number(document.getElementById('input-plano').value || 0);
   const recebeVA = document.getElementById('toggle-form-va').dataset.value === 'true';
@@ -1645,14 +1762,57 @@ async function criarColaborador() {
   const dataNascimento = document.getElementById('input-nascimento').value || null;
   if (!nome || !salarioBase) { alert('Nome e salário base são obrigatórios.'); return; }
 
+  // Situação decide quais dos dois grupos de campo (Demissão x Afastamento)
+  // realmente valem -- lidos direto do valor bruto dos inputs aqui só pra
+  // validar; o que efetivamente vai pro Firestore é montado abaixo por
+  // situação, pra nunca deixar um campo escondido com valor antigo "vazar"
+  // (ex.: editar um Desligado, mudar Situação pra Ativo sem limpar a Data de
+  // Demissão manualmente -- ela não pode ser salva mesmo assim).
+  const situacao = document.getElementById('input-situacao-colab').value;
+  const dataDemissaoInformada = document.getElementById('input-demissao-colab').value || null;
+  const dataAfastamentoInformada = document.getElementById('input-afastamento-data').value || null;
+  const previsaoRetornoInformada = document.getElementById('input-afastamento-previsao').value || null;
+  const tipoAfastamentoInformado = document.getElementById('input-afastamento-tipo').value || null;
+  const observacaoAfastamentoInformada = document.getElementById('input-afastamento-obs').value.trim() || null;
+
+  if (situacao === 'DESLIGADO' && !dataDemissaoInformada) { alert('Informe a Data de Demissão.'); return; }
+  if (situacao === 'AFASTADO') {
+    if (!dataAfastamentoInformada) { alert('Informe a Data do afastamento.'); return; }
+    if (!tipoAfastamentoInformado) { alert('Informe o Tipo/Motivo do afastamento.'); return; }
+    if (previsaoRetornoInformada && previsaoRetornoInformada < dataAfastamentoInformada) {
+      alert('A previsão de retorno não pode ser anterior à data do afastamento.');
+      return;
+    }
+  }
+
+  const anterior = editandoColaboradorId ? (colaboradoresMap.get(editandoColaboradorId) || {}) : {};
+  const dataDemissao = situacao === 'DESLIGADO' ? dataDemissaoInformada : null;
+  const ativo = situacao === 'ATIVO';
+  // Fora de Afastado, preserva o que já existia (não apaga o histórico do
+  // último afastamento só porque a situação mudou -- ver seção 20 da missão).
+  const dataAfastamento = situacao === 'AFASTADO' ? dataAfastamentoInformada : (anterior.dataAfastamento ?? null);
+  const previsaoRetorno = situacao === 'AFASTADO' ? previsaoRetornoInformada : (anterior.previsaoRetorno ?? null);
+  const tipoAfastamento = situacao === 'AFASTADO' ? tipoAfastamentoInformado : (anterior.tipoAfastamento ?? null);
+  const observacaoAfastamento = situacao === 'AFASTADO' ? observacaoAfastamentoInformada : (anterior.observacaoAfastamento ?? null);
+
+  // Um afastamento só gera evento novo no Dossiê se for de fato novo (motivo
+  // ou data mudou) -- salvar de novo sem alterar o afastamento não duplica.
+  const afastamentoMudou = situacao === 'AFASTADO' && !(
+    anterior.statusColaborador === 'AFASTADO' &&
+    anterior.dataAfastamento === dataAfastamento &&
+    anterior.tipoAfastamento === tipoAfastamento
+  );
+
+  const payloadComum = {
+    nome, areaAtuacao, setor, dataAdmissao, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId, asoData, dataNascimento,
+    statusColaborador: situacao, ativo, dataDemissao, dataAfastamento, previsaoRetorno, tipoAfastamento, observacaoAfastamento,
+  };
+
   if (editandoColaboradorId) {
-    const payload = { nome, areaAtuacao, setor, dataAdmissao, dataDemissao, salarioBase, valorPlanoSaude, recebeVA, recebeVT, rotaId, asoData, dataNascimento };
-    // Preencher a demissão sempre move pra Inativos -- não força o inverso
-    // (limpar a demissão não reativa sozinho, pra não reativar por acidente
-    // alguém que foi desativado manualmente sem data; reativar é uma ação
-    // explícita própria, ver reativarColaborador()).
-    if (dataDemissao) payload.ativo = false;
-    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), payload);
+    await updateDoc(doc(db, 'colaboradores', editandoColaboradorId), payloadComum);
+    if (afastamentoMudou) {
+      await registrarEventoDossie(editandoColaboradorId, 'Afastamento', descreverAfastamento(tipoAfastamento, dataAfastamento, previsaoRetorno, observacaoAfastamento));
+    }
     cancelarEdicaoColaborador();
     return;
   }
@@ -1663,15 +1823,37 @@ async function criarColaborador() {
   if (!asoData && dataAdmissao) asoData = dataAdmissao;
 
   const id = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  await setDoc(doc(db, 'colaboradores', id), { nome, areaAtuacao, setor, dataAdmissao, dataDemissao, salarioBase, valorPlanoSaude, ativo: !dataDemissao, recebeVA, recebeVT, rotaId, asoData, dataNascimento });
+  await setDoc(doc(db, 'colaboradores', id), payloadComum);
+  if (situacao === 'AFASTADO') {
+    await registrarEventoDossie(id, 'Afastamento', descreverAfastamento(tipoAfastamento, dataAfastamento, previsaoRetorno, observacaoAfastamento));
+  }
   cancelarEdicaoColaborador();
 }
 
-// Reativação explícita: limpa a demissão e volta pra Ativo numa ação só,
-// pra não deixar o registro num estado inconsistente (ativo=true com
-// dataDemissao ainda preenchida).
+function descreverAfastamento(tipo, dataAfastamento, previsaoRetorno, observacao) {
+  let texto = `${tipo} — afastado em ${formatarDataBR(dataAfastamento)}`;
+  if (previsaoRetorno) texto += ` — previsão de retorno ${formatarDataBR(previsaoRetorno)}`;
+  if (observacao) texto += ` — ${observacao}`;
+  return texto;
+}
+
+// Reativação explícita (Desligado -> Ativo): limpa a demissão e volta pra
+// Ativo numa ação só, pra não deixar o registro num estado inconsistente
+// (ativo=true com dataDemissao ainda preenchida).
 async function reativarColaborador(id) {
-  await updateDoc(doc(db, 'colaboradores', id), { ativo: true, dataDemissao: null });
+  await updateDoc(doc(db, 'colaboradores', id), { ativo: true, dataDemissao: null, statusColaborador: 'ATIVO' });
+}
+
+// Retorno de afastamento (Afastado -> Ativo): mantém as datas do afastamento
+// anterior como histórico (não apaga) e registra a data do retorno de
+// verdade -- ver seção 6/7 da missão: a "previsão de retorno" nunca vira
+// retorno efetivo sozinha, só por confirmação explícita como esta.
+async function registrarRetornoColaborador(id) {
+  const c = colaboradoresMap.get(id);
+  if (!c) return;
+  const hoje = new Date().toISOString().slice(0, 10);
+  await updateDoc(doc(db, 'colaboradores', id), { statusColaborador: 'ATIVO', ativo: true, dataRetornoEfetivo: hoje });
+  await registrarEventoDossie(id, 'Afastamento', `Retorno registrado em ${formatarDataBR(hoje)}${c.tipoAfastamento ? ` — afastamento anterior: ${c.tipoAfastamento}` : ''}`);
 }
 
 // ── Parâmetros ──────────────────────────────────────────────────
@@ -1961,7 +2143,7 @@ function renderSelectAddColaborador() {
   const select = document.getElementById('select-add-colaborador');
   const idsNoMes = new Set(lancamentosDoMes.keys());
   const disponiveis = Array.from(colaboradoresMap.entries())
-    .filter(([id, c]) => c.ativo && !idsNoMes.has(id))
+    .filter(([id, c]) => obterStatusColaborador(c) === 'ATIVO' && !idsNoMes.has(id))
     .sort((a, b) => a[1].nome.localeCompare(b[1].nome));
   select.innerHTML = '<option value="">Selecione...</option>' +
     disponiveis.map(([id, c]) => `<option value="${id}">${c.nome}</option>`).join('');
@@ -1984,7 +2166,7 @@ async function adicionarColaboradorAoMes() {
 
 async function adicionarTodosColaboradoresAoMes() {
   const idsNoMes = new Set(lancamentosDoMes.keys());
-  const faltando = Array.from(colaboradoresMap.entries()).filter(([id, c]) => c.ativo && !idsNoMes.has(id));
+  const faltando = Array.from(colaboradoresMap.entries()).filter(([id, c]) => obterStatusColaborador(c) === 'ATIVO' && !idsNoMes.has(id));
   if (faltando.length === 0) return;
   if (!confirm(`Adicionar os ${faltando.length} colaboradores ativos que ainda não estão em ${formatMes(mesAtual)}?`)) return;
 
@@ -2166,7 +2348,9 @@ function atualizarStatsDashboard() {
   const label = document.getElementById('dash-mes-atual-label');
   if (label) label.textContent = formatMes(mesAtual);
 
-  const ativos = Array.from(colaboradoresMap.values()).filter(c => c.ativo).length;
+  // Conta só ATIVO -- não conta Afastado nem Desligado (obterStatusColaborador
+  // já derruba qualquer inconsistência entre `ativo`/`dataDemissao`).
+  const ativos = Array.from(colaboradoresMap.values()).filter(c => obterStatusColaborador(c) === 'ATIVO').length;
   const statAtivos = document.getElementById('stat-colaboradores-ativos');
   if (statAtivos) statAtivos.textContent = ativos;
 
@@ -2179,7 +2363,7 @@ function atualizarStatsDashboard() {
   const statAso = document.getElementById('stat-aso-pendentes');
   if (statAso) {
     const pendentes = Array.from(colaboradoresMap.values())
-      .filter(c => c.ativo)
+      .filter(c => obterStatusColaborador(c) === 'ATIVO')
       .filter(c => ['sem-data', 'vencido', 'a-vencer'].includes(calcularStatusASO(c).status)).length;
     statAso.textContent = pendentes;
   }
@@ -2192,7 +2376,7 @@ function atualizarStatsDashboard() {
     // o que contava período "Programada" (já agendado, data futura) como se
     // não tivesse plano nenhum, inflando a contagem em relação ao relatório.
     const aVencer = Array.from(colaboradoresMap.entries())
-      .filter(([, c]) => c.ativo && c.dataAdmissao)
+      .filter(([, c]) => obterStatusColaborador(c) === 'ATIVO' && c.dataAdmissao)
       .filter(([id, c]) => {
         const alerta = calcularAlertaFerias(entradaAVencerColaborador(id, c).p);
         return alerta.classe === 'vencido' || alerta.classe === 'a-vencer';
@@ -2204,7 +2388,7 @@ function atualizarStatsDashboard() {
   if (listaAniversariantes) {
     const mesNavegado = Number(mesAtual.split('-')[1]);
     const aniversariantes = Array.from(colaboradoresMap.values())
-      .filter(c => c.ativo && c.dataNascimento)
+      .filter(c => obterStatusColaborador(c) === 'ATIVO' && c.dataNascimento)
       .map(c => ({ nome: c.nome, dia: Number(c.dataNascimento.split('-')[2]), mes: Number(c.dataNascimento.split('-')[1]) }))
       .filter(c => c.mes === mesNavegado)
       .sort((a, b) => a.dia - b.dia);
@@ -2432,7 +2616,7 @@ async function aplicarEmLoteDecimo(campo, valor) {
 
 async function adicionarTodosDecimoAoAno() {
   const idsNoAno = new Set(decimosDoAno.keys());
-  const faltando = Array.from(colaboradoresMap.entries()).filter(([id, c]) => c.ativo && !idsNoAno.has(id));
+  const faltando = Array.from(colaboradoresMap.entries()).filter(([id, c]) => obterStatusColaborador(c) === 'ATIVO' && !idsNoAno.has(id));
   if (faltando.length === 0) return;
   if (!confirm(`Adicionar os ${faltando.length} colaboradores ativos que ainda não estão no 13º de ${anoAtual}?`)) return;
 
@@ -3159,7 +3343,7 @@ function renderRelatorioFerias() {
   if (filtroFeriasRelatorio === 'geral') {
     const linhas = [];
     for (const [id, c] of Array.from(colaboradoresMap.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome))) {
-      if (!c.ativo || !c.dataAdmissao) continue;
+      if (obterStatusColaborador(c) !== 'ATIVO' || !c.dataAdmissao) continue;
       linhas.push({ c, ...entradaAVencerColaborador(id, c) });
     }
     container.innerHTML = renderTabelaGeralFerias(linhas);
@@ -3170,7 +3354,7 @@ function renderRelatorioFerias() {
     // Ordenado do limite mais antigo (vencido há mais tempo) pro mais
     // recente -- prioriza quem está esperando resolução há mais tempo.
     const encontrados = Array.from(colaboradoresMap.entries())
-      .filter(([, c]) => c.ativo && c.dataAdmissao)
+      .filter(([, c]) => obterStatusColaborador(c) === 'ATIVO' && c.dataAdmissao)
       .map(([id, c]) => ({ c, ...entradaAVencerColaborador(id, c) }))
       .filter(({ p }) => calcularAlertaFerias(p).classe === 'vencido')
       .sort((a, b) => (a.p.limite || '').localeCompare(b.p.limite || ''));
@@ -3185,7 +3369,7 @@ function renderRelatorioFerias() {
   // já vencidos -- esses ficam só no filtro "Vencidas". Ordenado do limite
   // mais próximo pro mais distante, pra priorizar quem vence primeiro.
   const encontrados = Array.from(colaboradoresMap.entries())
-    .filter(([, c]) => c.ativo && c.dataAdmissao)
+    .filter(([, c]) => obterStatusColaborador(c) === 'ATIVO' && c.dataAdmissao)
     .map(([id, c]) => ({ c, ...entradaAVencerColaborador(id, c) }))
     .filter(({ p }) => calcularAlertaFerias(p).classe === 'a-vencer')
     .sort((a, b) => (a.p.limite || '').localeCompare(b.p.limite || ''));
