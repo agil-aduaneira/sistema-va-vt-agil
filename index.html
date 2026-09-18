@@ -975,7 +975,7 @@ import {
   onSnapshot, query, where, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
-  getStorage, ref, uploadBytes, getBytes
+  getStorage, ref, uploadBytes
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 const firebaseConfig = {
@@ -2977,33 +2977,40 @@ function renderDossieTable() {
   });
 }
 
-// Extensão do nome do arquivo (o próprio caminho já guarda o nome original,
-// ver criarRegistroDossie) -> contentType, pra montar o Blob certo ao
-// reabrir. Evita uma chamada extra a getMetadata() só pra isso -- os únicos
-// tipos aceitos no upload (TIPOS_ANEXO_PERMITIDOS) são justamente esses 3.
-function inferirContentTypePorNome(nome) {
-  const ext = nome.split('.').pop().toLowerCase();
-  if (ext === 'pdf') return 'application/pdf';
-  if (ext === 'png') return 'image/png';
-  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
-  return 'application/octet-stream';
-}
-
 // Anexos novos (anexoPath) não têm mais link público/permanente -- o
-// conteúdo é buscado autenticado na hora do clique (getBytes respeita a
-// Storage Rule normalmente, diferente de getDownloadURL) e aberto a partir
-// de um Blob local, que só existe nesta aba.
+// conteúdo é buscado autenticado na hora do clique, via Cloud Function
+// (getDossieAnexo), e aberto a partir de um Blob local, que só existe
+// nesta aba. Não usa mais getBytes(ref(storage, ...)) direto do cliente:
+// o Storage deste projeto responde 503 nesse caminho especificamente para
+// downloads autenticados (Bearer token) -- a function contorna isso lendo
+// o arquivo pelo Admin SDK (acesso direto ao bucket, sem passar pela
+// mesma camada quebrada), mantendo a exigência de login.
 async function abrirAnexoDossie(id) {
   const e = dossieEventos.get(id);
   if (!e || !e.anexoPath) return;
+  // Abre a aba de forma síncrona, ainda dentro do gesto de clique do
+  // usuário -- se esperássemos o fetch (assíncrono) para só então chamar
+  // window.open(), o navegador não reconheceria mais isso como resultado
+  // direto do clique e bloquearia o popup silenciosamente.
+  const janela = window.open('', '_blank');
   try {
-    const bytes = await getBytes(ref(storage, e.anexoPath));
-    const contentType = inferirContentTypePorNome(e.anexoPath);
-    const blobUrl = URL.createObjectURL(new Blob([bytes], { type: contentType }));
-    window.open(blobUrl, '_blank');
+    const token = await auth.currentUser.getIdToken();
+    const resp = await fetch(
+      `https://us-central1-sistema-va-vt-agil.cloudfunctions.net/getDossieAnexo?path=${encodeURIComponent(e.anexoPath)}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!resp.ok) throw new Error(`Falha ao buscar anexo (HTTP ${resp.status})`);
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    if (janela) {
+      janela.location.href = blobUrl;
+    } else {
+      window.open(blobUrl, '_blank');
+    }
     setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
   } catch (err) {
     console.error('Erro ao abrir anexo do dossiê:', err);
+    if (janela) janela.close();
     alert('Não foi possível abrir o anexo. Tente novamente.');
   }
 }

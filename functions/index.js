@@ -150,3 +150,38 @@ exports.testarAlertaAniversarios = onRequest(
     }
   }
 );
+
+// Serve anexos do Dossiê via Admin SDK (acesso direto ao bucket, ignora
+// Storage Rules) -- contorna um 503 persistente do Google especificamente
+// na camada que avalia Storage Rules pra downloads autenticados (`alt=media`
+// com Bearer token) neste bucket; leitura direta por IAM/Admin SDK funciona
+// normalmente. Segurança fica por conta desta function: exige login (mesma
+// checagem de outras functions deste arquivo) e restringe o caminho ao
+// prefixo `dossie/` antes de tocar no Storage.
+exports.getDossieAnexo = onRequest({ cors: true }, async (req, res) => {
+  try {
+    const authHeader = req.get('Authorization') || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) { res.status(401).json({ erro: 'Token ausente.' }); return; }
+    await admin.auth().verifyIdToken(token);
+
+    const path = req.query.path;
+    if (typeof path !== 'string' || !path.startsWith('dossie/')) {
+      res.status(400).json({ erro: 'Caminho inválido.' });
+      return;
+    }
+
+    const file = admin.storage().bucket().file(path);
+    const [exists] = await file.exists();
+    if (!exists) { res.status(404).json({ erro: 'Arquivo não encontrado.' }); return; }
+
+    const [metadata] = await file.getMetadata();
+    const [buffer] = await file.download();
+    res.set('Content-Type', metadata.contentType || 'application/octet-stream');
+    res.set('Content-Disposition', 'inline');
+    res.status(200).send(buffer);
+  } catch (err) {
+    logger.error(err);
+    res.status(401).json({ erro: 'Não autorizado ou falha ao buscar anexo: ' + err.message });
+  }
+});
