@@ -179,7 +179,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       <img src="logo-agil.png" alt="Agil Aduaneira" class="brand-logo">
       <div>
         <div class="brand">Setor Pessoal — Agil Aduaneira</div>
-        <div class="brand-sub">Cálculo de Vale Alimentação, Vale Transporte, plano de saúde e cadastro de colaboradores</div>
+        <div class="brand-sub">Cálculo de Vale Refeição, Vale Transporte, plano de saúde e cadastro de colaboradores</div>
       </div>
     </div>
     <div class="user-area">
@@ -286,7 +286,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
   <!-- ═══ LANÇAMENTO MENSAL ═══ -->
   <div class="tab-pane" id="tab-lancamento">
     <h1>Lançamento mensal</h1>
-    <div class="subtitle">V.A. e V.T. recalculados automaticamente conforme os dias informados.</div>
+    <div class="subtitle">V.R. e V.T. recalculados automaticamente conforme os dias informados.</div>
 
     <div class="month-nav">
       <button class="btn btn-ghost" id="btn-mes-anterior">&larr; anterior</button>
@@ -323,7 +323,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
           <tr>
             <th><input type="checkbox" id="chk-select-all" title="Selecionar todos"></th>
             <th>Colaborador</th><th>Mês</th><th>Não úteis</th><th>Home</th><th>Faltas/Atest.</th>
-            <th>Dias úteis</th><th>V.A.</th><th>V.T.</th><th>FLASH</th><th>P. Saúde</th>
+            <th>Dias úteis</th><th>V.R.</th><th>V.T.</th><th>FLASH</th><th>P. Saúde</th>
             <th>Co-part.</th><th>TT Plano</th><th></th>
           </tr>
         </thead>
@@ -418,7 +418,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
       <div class="field">
         <label>Benefícios</label>
         <div style="display:flex;gap:8px">
-          <button type="button" class="badge ativo" id="toggle-form-va" data-value="true">Recebe V.A.</button>
+          <button type="button" class="badge ativo" id="toggle-form-va" data-value="true">Recebe V.R.</button>
           <button type="button" class="badge ativo" id="toggle-form-vt" data-value="true">Recebe V.T.</button>
         </div>
       </div>
@@ -447,7 +447,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
 
     <div class="card form-row" id="painel-bulk-colab">
       <div class="field">
-        <label>V.A. (colaboradores marcados)</label>
+        <label>V.R. (colaboradores marcados)</label>
         <select id="select-bulk-va"><option value="true">Recebe</option><option value="false">Não recebe</option></select>
       </div>
       <button class="btn btn-dark" id="btn-bulk-va">Aplicar aos marcados</button>
@@ -476,7 +476,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
           <tr>
             <th><input type="checkbox" id="chk-select-all-colab" title="Selecionar todos"></th>
             <th>Nome</th><th>Cargo</th><th>Setor</th><th>Salário base</th><th>Plano de saúde</th><th>Status</th>
-            <th>V.A.</th><th>V.T.</th><th>ASO</th><th>Nascimento</th><th></th>
+            <th>V.R.</th><th>V.T.</th><th>ASO</th><th>Nascimento</th><th></th>
           </tr>
         </thead>
         <tbody id="colaboradores-tbody"></tbody>
@@ -511,12 +511,12 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
   <!-- ═══ PARÂMETROS ═══ -->
   <div class="tab-pane" id="tab-parametros">
     <h1>Parâmetros gerais</h1>
-    <div class="subtitle">Valor diário de Vale Alimentação e Vale Transporte, usado no cálculo de todos os colaboradores e meses.</div>
+    <div class="subtitle">Valor diário de Vale Refeição e Vale Transporte, usado no cálculo de todos os colaboradores e meses.</div>
 
     <div class="card" style="max-width:380px">
       <div class="form-row" style="flex-direction:column;align-items:stretch;gap:14px">
         <div class="field">
-          <label>Valor diário V.A. (R$)</label>
+          <label>Valor diário V.R. (R$)</label>
           <input type="number" step="0.01" id="input-va">
         </div>
         <div class="field">
@@ -623,7 +623,7 @@ tfoot td{font-weight:700;color:var(--navy);border-top:2px solid var(--g200);padd
   <!-- ═══ FÉRIAS ═══ -->
   <div class="tab-pane" id="tab-ferias">
     <h1>Férias</h1>
-    <div class="subtitle">Data de admissão e períodos de férias por colaborador. Quando um período estiver "gozado" no mês do lançamento, o V.A./V.T. daquele colaborador não é calculado naquele mês (só o plano de saúde).</div>
+    <div class="subtitle">Data de admissão e períodos de férias por colaborador. Quando um período estiver "gozado" no mês do lançamento, o V.R./V.T. daquele colaborador não é calculado naquele mês (só o plano de saúde).</div>
     <button class="btn btn-dark" id="btn-voltar-colaboradores-ferias" style="display:none;margin-bottom:16px">&larr; Voltar para Colaboradores</button>
 
     <div class="card form-row">
@@ -2416,7 +2416,7 @@ async function carregarDashboard() {
     data: {
       labels,
       datasets: [
-        { label: 'Total FLASH (V.A.+V.T.)', data: dadosFlash, backgroundColor: '#2E8CC7' },
+        { label: 'Total FLASH (V.R.+V.T.)', data: dadosFlash, backgroundColor: '#2E8CC7' },
         { label: 'Total plano de saúde', data: dadosPlano, backgroundColor: '#1B8A5A' },
       ],
     },
@@ -2436,7 +2436,7 @@ function exportarMesAtual() {
     .filter(x => x.c)
     .sort((a, b) => a.c.nome.localeCompare(b.c.nome));
 
-  const header = ['COLABORADOR','SAL. BASE','MÊS','NÃO ÚTEIS','HOME','FALTAS / ATESTADO','DIAS ÚTEIS','V.A.','V.T.','FLASH','P. SAÚDE','CO-PART.','TT PLANO'];
+  const header = ['COLABORADOR','SAL. BASE','MÊS','NÃO ÚTEIS','HOME','FALTAS / ATESTADO','DIAS ÚTEIS','V.R.','V.T.','FLASH','P. SAÚDE','CO-PART.','TT PLANO'];
   const rows = linhas.map(({ l, c }) => {
     const calc = calcularLinhaColaborador(l, c, config, rotasMap);
     return [c.nome, c.salarioBase, l.diasNoMes, l.diasNaoUteis, l.diasHomeOffice, l.faltasAtestado,

@@ -1,6 +1,6 @@
 # Setor Pessoal — Agil Aduaneira
 
-Nasceu como substituto da planilha mensal de Vale Alimentação, Vale Transporte e plano de saúde,
+Nasceu como substituto da planilha mensal de Vale Refeição, Vale Transporte e plano de saúde,
 com cadastro único de colaborador e lançamento mensal recalculado automaticamente. Cresceu, a
 pedido da Diretoria, para um mini-sistema de RH — nome atualizado de "V.A. + V.T." para "Setor
 Pessoal" para refletir isso.
@@ -9,7 +9,7 @@ Pessoal" para refletir isso.
 
 - **Dashboard** — tela inicial: colaboradores ativos, FLASH e plano de saúde do mês, ASOs
   pendentes, férias a vencer, aniversariantes do mês, gráfico de evolução dos últimos 12 meses.
-- **Lançamento Mensal** — cálculo de V.A./V.T./plano de saúde por colaborador e mês, com seleção
+- **Lançamento Mensal** — cálculo de V.R./V.T./plano de saúde por colaborador e mês, com seleção
   em lote e exportação `.xlsx`.
 - **Colaboradores** — cadastro único (cargo, setor, salário, benefícios, ASO, nascimento,
   Situação), com atalhos direto para Férias/13º/Dossiê de cada pessoa. Só lista quem está com
