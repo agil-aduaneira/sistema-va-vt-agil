@@ -2192,10 +2192,16 @@ const camposAssiduidade = [
   ['quantidadeAtestados', 'Atestados (qtd.)'],
 ];
 
+// Campo vazio ou ausente conta como zero; valor inválido (negativo/fracionário) vira null.
+function valorAssiduidade(valor) {
+  if (valor === undefined || valor === null || valor === '') return 0;
+  return Number.isSafeInteger(valor) && valor >= 0 ? valor : null;
+}
+
 function calcularBonusAssiduidade(lancamento) {
   if (lancamento.mesReferencia < '2026-11') return null;
-  const valores = camposAssiduidade.map(([campo]) => lancamento[campo]);
-  if (valores.some(valor => !Number.isSafeInteger(valor) || valor < 0)) return null;
+  const valores = camposAssiduidade.map(([campo]) => valorAssiduidade(lancamento[campo]));
+  if (valores.some(valor => valor === null)) return null;
   const [justificadas, injustificadas, atestados] = valores;
   if (injustificadas > 0 || justificadas > 2 || atestados >= 3) return 0;
   return justificadas === 2 ? 150 : 300;
@@ -2236,7 +2242,7 @@ function renderLancamentoTable() {
         <td><input type="number" min="0" class="num-input" data-field="faltasAtestado" value="${l.faltasAtestado}"></td>
         ${camposAssiduidade.map(([campo, rotulo]) => l.mesReferencia < '2026-11'
           ? '<td>—</td>'
-          : `<td><input type="number" min="0" step="1" class="num-input" data-assiduidade="${campo}" aria-label="${rotulo}" value="${Number.isSafeInteger(l[campo]) ? l[campo] : ''}"></td>`).join('')}
+          : `<td><input type="number" min="0" step="1" class="num-input" data-assiduidade="${campo}" aria-label="${rotulo}" value="${valorAssiduidade(l[campo]) ?? ''}"></td>`).join('')}
         <td><strong data-bonus aria-live="polite">${exibirBonusAssiduidade(l)}</strong></td>
         <td>${calc.diasUteis}</td>
         <td>${formatBRL(calc.valorVA)}</td>
@@ -2257,10 +2263,17 @@ function renderLancamentoTable() {
     const tr = input.closest('tr');
     const l = lancamentosDoMes.get(tr.dataset.rowId);
     const campo = input.dataset.assiduidade;
+    input.addEventListener('input', () => {
+      const atual = { ...l };
+      tr.querySelectorAll('input[data-assiduidade]').forEach(i => {
+        atual[i.dataset.assiduidade] = i.value === '' && !i.validity.badInput ? 0 : i.valueAsNumber;
+      });
+      tr.querySelector('[data-bonus]').textContent = exibirBonusAssiduidade(atual);
+    });
     input.addEventListener('change', async () => {
-      const valor = input.value === '' && !input.validity.badInput ? null : input.valueAsNumber;
-      if (valor !== null && (!Number.isSafeInteger(valor) || valor < 0)) {
-        input.value = l[campo] ?? '';
+      const valor = input.value === '' && !input.validity.badInput ? 0 : input.valueAsNumber;
+      if (!Number.isSafeInteger(valor) || valor < 0) {
+        input.value = valorAssiduidade(l[campo]) ?? '';
         alert('Informe um número inteiro maior ou igual a zero.');
         return;
       }
@@ -2268,10 +2281,12 @@ function renderLancamentoTable() {
       try {
         await updateDoc(doc(db, 'lancamentos', l.id), { [campo]: valor });
         l[campo] = valor;
+        input.value = valor;
         tr.querySelector('[data-bonus]').textContent = exibirBonusAssiduidade(l);
       } catch (erro) {
         console.error('Erro ao salvar assiduidade:', erro);
-        input.value = l[campo] ?? '';
+        input.value = valorAssiduidade(l[campo]) ?? '';
+        tr.querySelector('[data-bonus]').textContent = exibirBonusAssiduidade(l);
         alert('Não foi possível salvar a assiduidade. Tente novamente.');
       } finally {
         input.disabled = false;
@@ -2495,7 +2510,7 @@ function exportarMesAtual() {
   if (mesAtual >= '2026-11') {
     header.splice(6, 0, 'FALTAS JUSTIFICADAS (DIAS)', 'FALTAS INJUSTIFICADAS (DIAS)', 'ATESTADOS (QTD.)', 'BÔNUS APURADO');
     linhas.forEach(({ l }, index) => {
-      const valores = camposAssiduidade.map(([campo]) => l[campo] ?? '');
+      const valores = camposAssiduidade.map(([campo]) => valorAssiduidade(l[campo]) ?? '');
       rows[index].splice(6, 0, ...valores, calcularBonusAssiduidade(l) ?? 'Pendente');
     });
     rows.at(-1).splice(6, 0, '', '', '', linhas.reduce((total, { l }) => total + (calcularBonusAssiduidade(l) ?? 0), 0));
